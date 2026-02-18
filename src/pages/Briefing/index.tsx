@@ -18,6 +18,7 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -352,9 +353,7 @@ export function Briefing() {
               </Button>
             </div>
             <div className="prose prose-invert max-w-none">
-              <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                {briefingData.content}
-              </div>
+              <MarkdownRenderer content={briefingData.content} />
             </div>
 
             {/* Obsidian Tip */}

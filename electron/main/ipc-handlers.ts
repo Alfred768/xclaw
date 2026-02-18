@@ -7,6 +7,7 @@ import { existsSync, copyFileSync, statSync, readFileSync, writeFileSync, mkdirS
 import { homedir } from 'node:os';
 import { join, extname, basename } from 'node:path';
 import crypto from 'node:crypto';
+import { search as ddgSearch } from 'duck-duck-scrape';
 import { GatewayManager } from '../gateway/manager';
 import { ClawHubService, ClawHubSearchParams, ClawHubInstallParams, ClawHubUninstallParams } from '../gateway/clawhub';
 import {
@@ -1831,7 +1832,7 @@ function readBriefingSettings(): BriefingSettings {
     focusTopics: ['AI News', 'Bitcoin'],
     obsidianVaultPath: '',
     timezoneOffset: -new Date().getTimezoneOffset(),
-    enabled: false,
+    enabled: true,
     searchMode: 'knowledge',
   };
 
@@ -1841,7 +1842,7 @@ function readBriefingSettings(): BriefingSettings {
 
   try {
     const raw = readFileSync(BRIEFING_SETTINGS_PATH, 'utf-8');
-    return { ...defaultSettings, ...JSON.parse(raw) };
+    return { ...defaultSettings, ...JSON.parse(raw), enabled: true };
   } catch (err) {
     logger.error('Failed to read briefing settings:', err);
     return defaultSettings;
@@ -1986,7 +1987,7 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
     try {
       logger.info('[Briefing] Starting briefing generation for topics:', params.topics, 'mode:', params.searchMode);
 
-      // Build prompt for LLM to generate briefing
+      // Build language instruction
       const langInstruction = params.language === 'zh'
         ? '请用简体中文生成简报。'
         : params.language === 'ja'
@@ -1995,12 +1996,55 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
 
       const topicsList = params.topics.join(', ');
 
-      let prompt: string;
+      // Server-side search (using duck-duck-scrape)
+      let searchContext = '';
       if (params.searchMode === 'web') {
-        // Web search mode - LLM will try to use search tools
+        logger.info('[Briefing] Performing server-side web search...');
+        try {
+          const searchResults: Array<{ title: string; url: string; snippet: string }> = [];
+
+          // Search for each topic
+          for (const topic of params.topics) {
+            const searchQuery = `${topic} latest news 2026`;
+            logger.info('[Briefing] Searching for:', searchQuery);
+
+            // Use duck-duck-scrape for search
+            const ddgResults = await ddgSearch(searchQuery, { safeSearch: 'STRICT' });
+
+            // Transform results to match expected format
+            const results = ddgResults.map((r: { title: string; url: string; snippet: string }) => ({
+              title: r.title,
+              url: r.url,
+              snippet: r.snippet,
+            }));
+
+            searchResults.push(...results);
+          }
+
+          // Format search results as context for LLM
+          if (searchResults.length > 0) {
+            searchContext = `\n\n## 搜索结果 (Web Search Results):\n\n`;
+            for (const r of searchResults) {
+              searchContext += `### ${r.title}\n${r.snippet}\n来源: ${r.url}\n\n`;
+            }
+            logger.info('[Briefing] Search completed, found', searchResults.length, 'results');
+          } else {
+            logger.warn('[Briefing] No search results found');
+          }
+        } catch (searchError) {
+          logger.error('[Briefing] Search failed:', searchError);
+          // Continue without search context
+        }
+      }
+
+      // Build prompt for LLM
+      let prompt: string;
+      if (params.searchMode === 'web' && searchContext) {
+        // Web search mode - use server-side search results
         prompt = `${langInstruction}
 
-请搜索并总结以下话题的最新新闻：${topicsList}
+请基于以下搜索结果，总结以下话题的最新新闻：${topicsList}
+${searchContext}
 
 请以 Obsidian 友好的 Markdown 格式生成每日简报，包含：
 1. 每个话题的标题
@@ -2029,27 +2073,51 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
       }
 
       // Call Gateway to generate briefing
-      const result = await gatewayManager.rpc('chat.send', {
+      const sendResult = await gatewayManager.rpc<{ runId?: string }>('chat.send', {
         sessionKey: 'agent:main:briefing',
         message: prompt,
         deliver: false,
         idempotencyKey: crypto.randomUUID(),
       }, 120000);
 
-      logger.info('[Briefing] LLM response received');
+      logger.info('[Briefing] Chat send result:', JSON.stringify(sendResult));
 
-      // Extract content from response
+      // Wait for the run to complete and get chat history
+      // The chat.send is async, so we need to poll for results
       let briefingContent = '';
-      if (result && result.messages) {
-        const assistantMsg = result.messages.find((m: { role: string }) => m.role === 'assistant');
-        if (assistantMsg && assistantMsg.content) {
-          briefingContent = typeof assistantMsg.content === 'string'
-            ? assistantMsg.content
-            : JSON.stringify(assistantMsg.content);
+      const maxRetries = 10;
+      const retryDelay = 2000;
+
+      for (let i = 0; i < maxRetries; i++) {
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+
+        const historyResult = await gatewayManager.rpc<{ messages?: Array<{ role: string; content: unknown }> }>(
+          'chat.history',
+          { sessionKey: 'agent:main:briefing', limit: 10 }
+        );
+
+        logger.info(`[Briefing] History attempt ${i + 1}:`, historyResult ? Object.keys(historyResult) : 'null');
+
+        if (historyResult && historyResult.messages && historyResult.messages.length > 0) {
+          // Find the most recent assistant message
+          const messages = historyResult.messages as Array<{ role: string; content: unknown }>;
+          const assistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
+
+          if (assistantMsg && assistantMsg.content) {
+            briefingContent = typeof assistantMsg.content === 'string'
+              ? assistantMsg.content
+              : JSON.stringify(assistantMsg.content);
+
+            if (briefingContent.trim().length > 0) {
+              logger.info('[Briefing] Got content, length:', briefingContent.length);
+              break;
+            }
+          }
         }
       }
 
       if (!briefingContent) {
+        logger.error('[Briefing] Failed to get briefing content after retries');
         return { success: false, error: 'Failed to generate briefing content' };
       }
 
