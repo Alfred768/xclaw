@@ -121,6 +121,22 @@ const electronAPI = {
         'media:getThumbnails',
         // Chat send with media (reads staged files in main process)
         'chat:sendWithMedia',
+        // Todo list
+        'todo:getAll',
+        'todo:add',
+        'todo:addMany',
+        'todo:update',
+        'todo:delete',
+        'todo:toggle',
+        'todo:getStoragePath',
+        // Briefing (Daily AI Briefing)
+        'briefing:getSettings',
+        'briefing:saveSettings',
+        'briefing:getContent',
+        'briefing:generate',
+        'briefing:saveToObsidian',
+        'briefing:getStoragePath',
+        'briefing:selectDirectory',
         // OpenClaw extras
         'openclaw:getDir',
         'openclaw:getConfigDir',

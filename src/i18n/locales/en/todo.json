@@ -1,0 +1,17 @@
+{
+    "title": "Todo List",
+    "description": "Manage your smart extracted action items",
+    "pending": "pending",
+    "completed": "completed",
+    "addTask": "Add a new task...",
+    "add": "Add",
+    "dismiss": "Dismiss",
+    "loading": "Loading tasks...",
+    "noTasks": "No tasks yet",
+    "noTasksDesc": "Upload a document or enter text in chat and ask for a \"to do list\" to extract action items automatically.",
+    "goToChat": "Go to Chat",
+    "pendingTasks": "Pending",
+    "completedTasks": "Completed",
+    "created": "Created",
+    "updated": "Updated"
+}

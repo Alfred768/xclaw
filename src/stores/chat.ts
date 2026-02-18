@@ -4,6 +4,7 @@
  * Communicates with OpenClaw Gateway via gateway:rpc IPC.
  */
 import { create } from 'zustand';
+import { useSettingsStore } from './settings';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -99,6 +100,170 @@ interface ChatState {
 
 const DEFAULT_CANONICAL_PREFIX = 'agent:main';
 const DEFAULT_SESSION_KEY = `${DEFAULT_CANONICAL_PREFIX}:main`;
+
+// ── Smart Todo Detection ───────────────────────────────────────────
+
+/** Regex patterns to detect to-do list requests */
+const TODO_KEYWORDS = [
+  /to\s*do\s*list/i,
+  /action\s*plan/i,
+  /代办事项/i,
+  /待办事项/i,
+  /任务清单/i,
+  /生成.*todo/i,
+  /提取.*行动项/i,
+];
+
+/** Check if text contains to-do list keywords */
+function containsTodoKeyword(text: string): boolean {
+  return TODO_KEYWORDS.some((pattern) => pattern.test(text));
+}
+
+/**
+ * Parse todo items from LLM response
+ * Looks for the [TODO_LIST:...] pattern or any JSON array
+ */
+function parseTodoItemsFromResponse(content: string): string[] {
+  console.log('[SmartTodo] Content length:', content.length);
+  console.log('[SmartTodo] Content preview:', content.substring(0, 200));
+
+  // Try to match [TODO_LIST:...] pattern - use greedy matching
+  const match = content.match(/\[TODO_LIST:(\[[\s\S]*?\])\]/);
+  if (match && match[1]) {
+    const rawMatch = match[1];
+    console.log('[SmartTodo] Found TODO_LIST raw match:', rawMatch.substring(0, 200));
+
+    try {
+      // First, unescape the JSON string
+      const unescaped = rawMatch
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+      console.log('[SmartTodo] Unescaped:', unescaped.substring(0, 200));
+
+      const items = JSON.parse(unescaped);
+      if (Array.isArray(items)) {
+        const filtered = items.filter((item): boolean => typeof item === 'string' && Boolean(item.trim()));
+        console.log('[SmartTodo] Parsed items:', filtered);
+        return filtered;
+      }
+    } catch (e) {
+      console.log('[SmartTodo] JSON parse failed:', e);
+      // Try direct parse
+      try {
+        const items = JSON.parse(rawMatch);
+        if (Array.isArray(items)) {
+          const filtered = items.filter((item): boolean => typeof item === 'string' && Boolean(item.trim()));
+          console.log('[SmartTodo] Direct parse worked, items:', filtered);
+          return filtered;
+        }
+      } catch (e2) {
+        console.log('[SmartTodo] Direct parse also failed:', e2);
+      }
+    }
+  }
+
+  // Fallback: try to find any JSON array with strings (more lenient)
+  const jsonMatch = content.match(/\[[\s\S]*?\]/g);
+  if (jsonMatch) {
+    console.log('[SmartTodo] Found JSON arrays:', jsonMatch.length);
+    console.log('[SmartTodo] JSON arrays preview:', jsonMatch.map(m => m.substring(0, 80)));
+
+    for (const m of jsonMatch) {
+      // Skip very small arrays (less than 10 chars)
+      if (m.length < 10) continue;
+
+      console.log('[SmartTodo] Trying to parse:', m.substring(0, 100));
+
+      try {
+        const items = JSON.parse(m);
+        console.log('[SmartTodo] Parsed, isArray:', Array.isArray(items), 'length:', items?.length);
+
+        if (Array.isArray(items) && items.length >= 1) {
+          // Check if items are strings (lenient: allow any length)
+          const stringItems = items.filter((item): boolean => typeof item === 'string' && Boolean(item.trim()));
+          console.log('[SmartTodo] String items:', stringItems);
+
+          if (stringItems.length > 0) {
+            console.log('[SmartTodo] Fallback parsed items:', stringItems);
+            return stringItems;
+          }
+        }
+      } catch (e) {
+        console.log('[SmartTodo] Parse failed:', e);
+      }
+    }
+  }
+
+  console.log('[SmartTodo] No todo items found');
+  return [];
+}
+
+/**
+ * Translate todo items to user's language setting
+ */
+async function translateTodoItems(items: string[], targetLang: string): Promise<string[]> {
+  if (items.length === 0 || targetLang === 'en') {
+    return items; // No translation needed for English or empty
+  }
+
+  const langNames: Record<string, string> = {
+    zh: 'Chinese (Simplified)',
+    ja: 'Japanese',
+  };
+
+  const targetLangName = langNames[targetLang] || 'English';
+
+  const translationPrompt = `Translate the following todo items to ${targetLangName}. Return only a JSON array with translated strings, no other text.
+
+Todo items:
+${items.map((item, i) => `${i + 1}. ${item}`).join('\n')}
+
+Respond in this format: ["translated item 1", "translated item 2", ...]`;
+
+  try {
+    const result = await window.electron.ipcRenderer.invoke(
+      'gateway:rpc',
+      'chat.send',
+      {
+        sessionKey: 'agent:main:translate-todo',
+        message: translationPrompt,
+        deliver: false,
+        idempotencyKey: crypto.randomUUID(),
+      },
+      30000
+    ) as { success: boolean; result?: { messages?: Array<{ role: string; content: unknown }> }; error?: string };
+
+    if (result.success && result.result?.messages) {
+      const assistantMsg = result.result.messages.find(
+        (m: { role: string }) => m.role === 'assistant'
+      );
+      if (assistantMsg && assistantMsg.content) {
+        const content = typeof assistantMsg.content === 'string'
+          ? assistantMsg.content
+          : JSON.stringify(assistantMsg.content);
+
+        // Try to parse JSON array
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          try {
+            const translated = JSON.parse(jsonMatch[0]);
+            if (Array.isArray(translated) && translated.length === items.length) {
+              console.log('[SmartTodo] Translated items:', translated);
+              return translated;
+            }
+          } catch {
+            // Not valid JSON
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[SmartTodo] Translation failed:', err);
+  }
+
+  // Return original if translation fails
+  return items;
+}
 
 // ── Local image cache ─────────────────────────────────────────
 // The Gateway doesn't store image attachments in session content blocks,
@@ -678,6 +843,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const trimmed = text.trim();
     if (!trimmed && (!attachments || attachments.length === 0)) return;
 
+    // ── Smart Todo Detection ────────────────────────────────────────
+    // Check if user message contains to-do list keywords
+    const isTodoRequest = containsTodoKeyword(trimmed);
+
+    // Get user's language setting for todo extraction
+    let todoLanguageInstruction = '';
+    if (isTodoRequest) {
+      const userLang = useSettingsStore.getState().language;
+      const langInstructions: Record<string, string> = {
+        zh: '请用简体中文回答，并确保待办事项列表也用中文输出。',
+        ja: '日本語で回答してください。',
+        en: '',
+      };
+      todoLanguageInstruction = langInstructions[userLang] || '';
+      console.log('[SmartTodo] User language:', userLang, 'Instruction:', todoLanguageInstruction);
+    }
+    let todoExtracted = false;
+
     const { currentSessionKey } = get();
 
     // Add user message optimistically (with local file metadata for UI display)
@@ -729,6 +912,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       let result: { success: boolean; result?: { runId?: string }; error?: string };
 
+      // Build message with language instruction for todo requests
+      const baseMessage = trimmed || 'Process the attached file(s).';
+      const fullMessage = isTodoRequest && todoLanguageInstruction
+        ? `${baseMessage}\n\n${todoLanguageInstruction}`
+        : baseMessage;
+
       if (hasMedia) {
         // Use dedicated chat:sendWithMedia handler — main process reads staged files
         // from disk and builds base64 attachments, avoiding large IPC transfers
@@ -736,7 +925,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           'chat:sendWithMedia',
           {
             sessionKey: currentSessionKey,
-            message: trimmed || 'Process the attached file(s).',
+            message: fullMessage,
             deliver: false,
             idempotencyKey,
             media: attachments.map((a) => ({
@@ -753,7 +942,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           'chat.send',
           {
             sessionKey: currentSessionKey,
-            message: trimmed,
+            message: fullMessage,
             deliver: false,
             idempotencyKey,
           },
@@ -766,6 +955,60 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set({ error: result.error || 'Failed to send message', sending: false });
       } else if (result.result?.runId) {
         set({ activeRunId: result.result.runId });
+
+        // ── Smart Todo: Extract after chat completes ─────────────────
+        // If user requested a to-do list, extract action items from the response
+        if (isTodoRequest && !todoExtracted) {
+          todoExtracted = true;
+          // Wait for chat to complete and messages to be updated
+          setTimeout(() => {
+            try {
+              // Get messages from store - the LLM response should have [TODO_LIST:...] pattern
+              const { messages } = get();
+
+              // Find the most recent assistant message
+              const assistantMessages = messages.filter(m => m.role === 'assistant');
+              const lastAssistantMsg = assistantMessages[assistantMessages.length - 1];
+
+              if (lastAssistantMsg && lastAssistantMsg.content) {
+                const content = typeof lastAssistantMsg.content === 'string'
+                  ? lastAssistantMsg.content
+                  : JSON.stringify(lastAssistantMsg.content);
+
+                console.log('[SmartTodo] Parsing response for todos...');
+
+                const todoItems = parseTodoItemsFromResponse(content);
+
+                if (todoItems.length > 0) {
+                  console.log('[SmartTodo] Extracted items:', todoItems);
+
+                  // Get user's language setting
+                  const userLang = useSettingsStore.getState().language;
+                  console.log('[SmartTodo] User language:', userLang);
+
+                  // Translate to user's language if not English
+                  translateTodoItems(todoItems, userLang).then((translatedItems) => {
+                    // Save to local storage via IPC
+                    window.electron.ipcRenderer.invoke('todo:addMany', translatedItems).then((saveResult) => {
+                      const result = saveResult as { success: boolean; error?: string };
+                      if (result.success) {
+                        console.log('[SmartTodo] Saved to storage');
+                      } else {
+                        console.error('[SmartTodo] Failed to save:', result.error);
+                      }
+                    }).catch((err) => {
+                      console.error('[SmartTodo] Failed to save:', err);
+                    });
+                  });
+                } else {
+                  console.log('[SmartTodo] No todo items found in response');
+                }
+              }
+            } catch (err) {
+              console.error('[SmartTodo] Error extracting todos:', err);
+            }
+          }, 15000); // Wait 15 seconds for chat to complete and messages to update
+        }
       } else {
         // No runId from gateway; keep sending state and wait for events.
       }

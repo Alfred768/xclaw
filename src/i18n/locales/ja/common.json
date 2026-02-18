@@ -6,7 +6,9 @@
         "channels": "チャンネル",
         "dashboard": "ダッシュボード",
         "settings": "設定",
-        "devConsole": "開発者コンソール"
+        "devConsole": "開発者コンソール",
+        "todo": " Todo",
+        "briefing": "ブリーフィング"
     },
     "actions": {
         "save": "保存",

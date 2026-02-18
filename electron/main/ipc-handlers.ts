@@ -96,6 +96,12 @@ export function registerIpcHandlers(
 
   // File staging handlers (upload/send separation)
   registerFileHandlers();
+
+  // Todo handlers (local JSON storage for todo list)
+  registerTodoHandlers();
+
+  // Briefing handlers (Daily AI Briefing)
+  registerBriefingHandlers(gatewayManager);
 }
 
 /**
@@ -1608,5 +1614,502 @@ function registerFileHandlers(): void {
       }
     }
     return results;
+  });
+}
+
+// ── Todo List handlers ──────────────────────────────────────────────
+
+interface TodoItem {
+  id: string;
+  content: string;
+  status: 'pending' | 'completed';
+  created_at: string;
+  updated_at: string;
+}
+
+interface TodoStorage {
+  tasks: TodoItem[];
+}
+
+const TODO_STORAGE_DIR = join(homedir(), '.openclaw', 'data');
+const TODO_STORAGE_PATH = join(TODO_STORAGE_DIR, 'todo_storage.json');
+
+/**
+ * Ensure todo storage directory exists
+ */
+function ensureTodoStorageDir(): void {
+  if (!existsSync(TODO_STORAGE_DIR)) {
+    mkdirSync(TODO_STORAGE_DIR, { recursive: true });
+  }
+}
+
+/**
+ * Read todo storage from JSON file
+ */
+function readTodoStorage(): TodoStorage {
+  ensureTodoStorageDir();
+  if (!existsSync(TODO_STORAGE_PATH)) {
+    return { tasks: [] };
+  }
+  try {
+    const raw = readFileSync(TODO_STORAGE_PATH, 'utf-8');
+    return JSON.parse(raw);
+  } catch (err) {
+    logger.error('Failed to read todo storage:', err);
+    return { tasks: [] };
+  }
+}
+
+/**
+ * Write todo storage to JSON file
+ */
+function writeTodoStorage(storage: TodoStorage): void {
+  ensureTodoStorageDir();
+  try {
+    const json = JSON.stringify(storage, null, 2);
+    writeFileSync(TODO_STORAGE_PATH, json, 'utf-8');
+  } catch (err) {
+    logger.error('Failed to write todo storage:', err);
+    throw err;
+  }
+}
+
+/**
+ * Register Todo IPC handlers
+ */
+function registerTodoHandlers(): void {
+  // Get all todo items
+  ipcMain.handle('todo:getAll', async () => {
+    try {
+      const storage = readTodoStorage();
+      return { success: true, tasks: storage.tasks };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Add a new todo item
+  ipcMain.handle('todo:add', async (_, content: string) => {
+    try {
+      const storage = readTodoStorage();
+      const now = new Date().toISOString();
+      const newTask: TodoItem = {
+        id: crypto.randomUUID(),
+        content,
+        status: 'pending',
+        created_at: now,
+        updated_at: now,
+      };
+      storage.tasks.push(newTask);
+      writeTodoStorage(storage);
+      return { success: true, task: newTask };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Add multiple todo items (for bulk import from LLM)
+  ipcMain.handle('todo:addMany', async (_, items: string[]) => {
+    try {
+      const storage = readTodoStorage();
+      const now = new Date().toISOString();
+      const newTasks: TodoItem[] = items.map((content) => ({
+        id: crypto.randomUUID(),
+        content,
+        status: 'pending',
+        created_at: now,
+        updated_at: now,
+      }));
+      storage.tasks.push(...newTasks);
+      writeTodoStorage(storage);
+      return { success: true, tasks: newTasks };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Update a todo item (content or status)
+  ipcMain.handle('todo:update', async (_, params: { id: string; content?: string; status?: 'pending' | 'completed' }) => {
+    try {
+      const storage = readTodoStorage();
+      const taskIndex = storage.tasks.findIndex((t) => t.id === params.id);
+      if (taskIndex === -1) {
+        return { success: false, error: 'Task not found' };
+      }
+      const task = storage.tasks[taskIndex];
+      if (params.content !== undefined) {
+        task.content = params.content;
+      }
+      if (params.status !== undefined) {
+        task.status = params.status;
+      }
+      task.updated_at = new Date().toISOString();
+      storage.tasks[taskIndex] = task;
+      writeTodoStorage(storage);
+      return { success: true, task };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Delete a todo item
+  ipcMain.handle('todo:delete', async (_, id: string) => {
+    try {
+      const storage = readTodoStorage();
+      const initialLength = storage.tasks.length;
+      storage.tasks = storage.tasks.filter((t) => t.id !== id);
+      if (storage.tasks.length === initialLength) {
+        return { success: false, error: 'Task not found' };
+      }
+      writeTodoStorage(storage);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Toggle todo status
+  ipcMain.handle('todo:toggle', async (_, id: string) => {
+    try {
+      const storage = readTodoStorage();
+      const task = storage.tasks.find((t) => t.id === id);
+      if (!task) {
+        return { success: false, error: 'Task not found' };
+      }
+      task.status = task.status === 'pending' ? 'completed' : 'pending';
+      task.updated_at = new Date().toISOString();
+      writeTodoStorage(storage);
+      return { success: true, task };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Get todo storage path (for debugging)
+  ipcMain.handle('todo:getStoragePath', async () => {
+    return TODO_STORAGE_PATH;
+  });
+}
+
+// ── Briefing (Daily AI Briefing) handlers ─────────────────────────────────
+
+interface BriefingSettings {
+  briefingTime: string; // HH:MM format
+  focusTopics: string[]; // Array of topics
+  obsidianVaultPath: string; // Local file path
+  timezoneOffset: number; // User's timezone offset in minutes
+  enabled: boolean; // Auto-generate enabled
+  searchMode: 'knowledge' | 'web'; // 'knowledge' = use LLM knowledge, 'web' = try web search (requires browser)
+}
+
+interface BriefingData {
+  lastGenerated: string | null;
+  content: string;
+  topics: string[];
+}
+
+const BRIEFING_STORAGE_DIR = join(homedir(), '.openclaw', 'data');
+const BRIEFING_SETTINGS_PATH = join(BRIEFING_STORAGE_DIR, 'briefing_settings.json');
+const BRIEFING_CONTENT_PATH = join(BRIEFING_STORAGE_DIR, 'briefing_latest.md');
+
+/**
+ * Ensure briefing storage directory exists
+ */
+function ensureBriefingStorageDir(): void {
+  if (!existsSync(BRIEFING_STORAGE_DIR)) {
+    mkdirSync(BRIEFING_STORAGE_DIR, { recursive: true });
+  }
+}
+
+/**
+ * Read briefing settings from JSON file
+ */
+function readBriefingSettings(): BriefingSettings {
+  ensureBriefingStorageDir();
+  const defaultSettings: BriefingSettings = {
+    briefingTime: '08:00',
+    focusTopics: ['AI News', 'Bitcoin'],
+    obsidianVaultPath: '',
+    timezoneOffset: -new Date().getTimezoneOffset(),
+    enabled: false,
+    searchMode: 'knowledge',
+  };
+
+  if (!existsSync(BRIEFING_SETTINGS_PATH)) {
+    return defaultSettings;
+  }
+
+  try {
+    const raw = readFileSync(BRIEFING_SETTINGS_PATH, 'utf-8');
+    return { ...defaultSettings, ...JSON.parse(raw) };
+  } catch (err) {
+    logger.error('Failed to read briefing settings:', err);
+    return defaultSettings;
+  }
+}
+
+/**
+ * Write briefing settings to JSON file
+ */
+function writeBriefingSettings(settings: BriefingSettings): void {
+  ensureBriefingStorageDir();
+  try {
+    const json = JSON.stringify(settings, null, 2);
+    writeFileSync(BRIEFING_SETTINGS_PATH, json, 'utf-8');
+  } catch (err) {
+    logger.error('Failed to write briefing settings:', err);
+    throw err;
+  }
+}
+
+/**
+ * Read latest briefing content
+ */
+function readBriefingContent(): BriefingData {
+  ensureBriefingStorageDir();
+  const defaultData: BriefingData = {
+    lastGenerated: null,
+    content: '',
+    topics: [],
+  };
+
+  if (!existsSync(BRIEFING_CONTENT_PATH)) {
+    return defaultData;
+  }
+
+  try {
+    const raw = readFileSync(BRIEFING_CONTENT_PATH, 'utf-8');
+    // Parse frontmatter + content
+    const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+    if (match) {
+      const frontmatter = match[1];
+      const content = match[2];
+
+      // Parse frontmatter
+      const lastGeneratedMatch = frontmatter.match(/lastGenerated:\s*(.+)/);
+      const topicsMatch = frontmatter.match(/topics:\s*\[(.*)\]/);
+
+      return {
+        lastGenerated: lastGeneratedMatch ? lastGeneratedMatch[1].trim() : null,
+        content,
+        topics: topicsMatch ? topicsMatch[1].split(',').map(t => t.trim().replace(/"/g, '')) : [],
+      };
+    }
+    return { ...defaultData, content: raw };
+  } catch (err) {
+    logger.error('Failed to read briefing content:', err);
+    return defaultData;
+  }
+}
+
+/**
+ * Write briefing content to file
+ */
+function writeBriefingContent(topics: string[], content: string): void {
+  ensureBriefingStorageDir();
+  const now = new Date().toISOString();
+  const frontmatter = `---
+lastGenerated: ${now}
+topics: [${topics.map(t => `"${t}"`).join(', ')}]
+---
+
+`;
+  try {
+    writeFileSync(BRIEFING_CONTENT_PATH, frontmatter + content, 'utf-8');
+  } catch (err) {
+    logger.error('Failed to write briefing content:', err);
+    throw err;
+  }
+}
+
+/**
+ * Write briefing to Obsidian vault
+ */
+function writeToObsidian(vaultPath: string, content: string): { success: boolean; path?: string; error?: string } {
+  if (!vaultPath || !existsSync(vaultPath)) {
+    return { success: false, error: 'Obsidian vault path is invalid or does not exist' };
+  }
+
+  try {
+    const date = new Date().toISOString().split('T')[0];
+    const fileName = `Daily_Briefing_${date}.md`;
+    const filePath = join(vaultPath, fileName);
+    writeFileSync(filePath, content, 'utf-8');
+    return { success: true, path: filePath };
+  } catch (err) {
+    logger.error('Failed to write to Obsidian:', err);
+    return { success: false, error: String(err) };
+  }
+}
+
+/**
+ * Register Briefing IPC handlers
+ */
+function registerBriefingHandlers(gatewayManager: GatewayManager): void {
+  // Get briefing settings
+  ipcMain.handle('briefing:getSettings', async () => {
+    try {
+      const settings = readBriefingSettings();
+      return { success: true, settings };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Save briefing settings
+  ipcMain.handle('briefing:saveSettings', async (_, settings: BriefingSettings) => {
+    try {
+      writeBriefingSettings(settings);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Get latest briefing content
+  ipcMain.handle('briefing:getContent', async () => {
+    try {
+      const data = readBriefingContent();
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Generate briefing (triggers Gateway RPC)
+  ipcMain.handle('briefing:generate', async (_, params: {
+    topics: string[];
+    obsidianVaultPath: string;
+    language?: string;
+    searchMode?: 'knowledge' | 'web';
+  }) => {
+    try {
+      logger.info('[Briefing] Starting briefing generation for topics:', params.topics, 'mode:', params.searchMode);
+
+      // Build prompt for LLM to generate briefing
+      const langInstruction = params.language === 'zh'
+        ? '请用简体中文生成简报。'
+        : params.language === 'ja'
+        ? '日本語で生成してください。'
+        : '';
+
+      const topicsList = params.topics.join(', ');
+
+      let prompt: string;
+      if (params.searchMode === 'web') {
+        // Web search mode - LLM will try to use search tools
+        prompt = `${langInstruction}
+
+请搜索并总结以下话题的最新新闻：${topicsList}
+
+请以 Obsidian 友好的 Markdown 格式生成每日简报，包含：
+1. 每个话题的标题
+2. 简要摘要（2-3句话）
+3. 相关链接列表
+
+生成一份结构化的每日简报。`;
+      } else {
+        // Knowledge mode - use LLM's internal knowledge only
+        prompt = `${langInstruction}
+
+请基于你的知识，总结以下话题的最新动态和重要新闻：${topicsList}
+
+重要提示：
+1. 请直接使用你的知识生成简报，禁止使用任何工具或搜索
+2. 如果某些话题你不太确定最新信息，请基于你训练数据中关于这些话题的最相关知识来生成
+3. 尽量提供准确、客观的摘要
+4. 绝对不要尝试调用任何工具
+
+请以 Obsidian 友好的 Markdown 格式生成每日简报，包含：
+1. 每个话题的标题
+2. 简要摘要（2-3句话）
+3. 如果有相关的官方链接或来源也可以列出
+
+生成一份结构化的每日简报。`;
+      }
+
+      // Call Gateway to generate briefing
+      const result = await gatewayManager.rpc('chat.send', {
+        sessionKey: 'agent:main:briefing',
+        message: prompt,
+        deliver: false,
+        idempotencyKey: crypto.randomUUID(),
+      }, 120000);
+
+      logger.info('[Briefing] LLM response received');
+
+      // Extract content from response
+      let briefingContent = '';
+      if (result && result.messages) {
+        const assistantMsg = result.messages.find((m: { role: string }) => m.role === 'assistant');
+        if (assistantMsg && assistantMsg.content) {
+          briefingContent = typeof assistantMsg.content === 'string'
+            ? assistantMsg.content
+            : JSON.stringify(assistantMsg.content);
+        }
+      }
+
+      if (!briefingContent) {
+        return { success: false, error: 'Failed to generate briefing content' };
+      }
+
+      // Save to local storage
+      writeBriefingContent(params.topics, briefingContent);
+
+      // Write to Obsidian if path is provided
+      let obsidianResult = { success: false };
+      if (params.obsidianVaultPath) {
+        obsidianResult = writeToObsidian(params.obsidianVaultPath, briefingContent);
+        logger.info('[Briefing] Obsidian write result:', obsidianResult);
+      }
+
+      return {
+        success: true,
+        content: briefingContent,
+        obsidianPath: obsidianResult.path,
+      };
+    } catch (error) {
+      logger.error('[Briefing] Generation failed:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Write to Obsidian manually
+  ipcMain.handle('briefing:saveToObsidian', async (_, params: {
+    vaultPath: string;
+    content: string;
+  }) => {
+    try {
+      const result = writeToObsidian(params.vaultPath, params.content);
+      return result;
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Get briefing storage path
+  ipcMain.handle('briefing:getStoragePath', async () => {
+    return {
+      settings: BRIEFING_SETTINGS_PATH,
+      content: BRIEFING_CONTENT_PATH,
+    };
+  });
+
+  // Select directory for Obsidian vault
+  ipcMain.handle('briefing:selectDirectory', async () => {
+    try {
+      const result = await dialog.showOpenDialog({
+        properties: ['openDirectory', 'createDirectory'],
+        title: 'Select Save Folder',
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, canceled: true };
+      }
+
+      return { success: true, path: result.filePaths[0] };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
   });
 }

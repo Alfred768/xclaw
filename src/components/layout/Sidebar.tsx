@@ -15,6 +15,8 @@ import {
   ChevronRight,
   Terminal,
   ExternalLink,
+  ListTodo,
+  Newspaper,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore } from '@/stores/settings';
@@ -90,6 +92,8 @@ export function Sidebar() {
     { to: '/skills', icon: <Puzzle className="h-5 w-5" />, label: t('sidebar.skills') },
     { to: '/channels', icon: <Radio className="h-5 w-5" />, label: t('sidebar.channels') },
     { to: '/dashboard', icon: <Home className="h-5 w-5" />, label: t('sidebar.dashboard') },
+    { to: '/todo', icon: <ListTodo className="h-5 w-5" />, label: t('sidebar.todo') },
+    { to: '/briefing', icon: <Newspaper className="h-5 w-5" />, label: t('sidebar.briefing') },
     { to: '/settings', icon: <Settings className="h-5 w-5" />, label: t('sidebar.settings') },
   ];
 

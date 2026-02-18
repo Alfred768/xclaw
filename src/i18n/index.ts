@@ -10,6 +10,8 @@ import enChannels from './locales/en/channels.json';
 import enSkills from './locales/en/skills.json';
 import enCron from './locales/en/cron.json';
 import enSetup from './locales/en/setup.json';
+import enTodo from './locales/en/todo.json';
+import enBriefing from './locales/en/briefing.json';
 
 // ZH
 import zhCommon from './locales/zh/common.json';
@@ -20,6 +22,8 @@ import zhChannels from './locales/zh/channels.json';
 import zhSkills from './locales/zh/skills.json';
 import zhCron from './locales/zh/cron.json';
 import zhSetup from './locales/zh/setup.json';
+import zhTodo from './locales/zh/todo.json';
+import zhBriefing from './locales/zh/briefing.json';
 
 // JA
 import jaCommon from './locales/ja/common.json';
@@ -30,6 +34,8 @@ import jaChannels from './locales/ja/channels.json';
 import jaSkills from './locales/ja/skills.json';
 import jaCron from './locales/ja/cron.json';
 import jaSetup from './locales/ja/setup.json';
+import jaTodo from './locales/ja/todo.json';
+import jaBriefing from './locales/ja/briefing.json';
 
 export const SUPPORTED_LANGUAGES = [
     { code: 'en', label: 'English' },
@@ -49,6 +55,8 @@ const resources = {
         skills: enSkills,
         cron: enCron,
         setup: enSetup,
+        todo: enTodo,
+        briefing: enBriefing,
     },
     zh: {
         common: zhCommon,
@@ -59,6 +67,8 @@ const resources = {
         skills: zhSkills,
         cron: zhCron,
         setup: zhSetup,
+        todo: zhTodo,
+        briefing: zhBriefing,
     },
     ja: {
         common: jaCommon,
@@ -69,6 +79,8 @@ const resources = {
         skills: jaSkills,
         cron: jaCron,
         setup: jaSetup,
+        todo: jaTodo,
+        briefing: jaBriefing,
     },
 };
 
@@ -79,7 +91,7 @@ i18n
         lng: 'en', // will be overridden by settings store
         fallbackLng: 'en',
         defaultNS: 'common',
-        ns: ['common', 'settings', 'dashboard', 'chat', 'channels', 'skills', 'cron', 'setup'],
+        ns: ['common', 'settings', 'dashboard', 'chat', 'channels', 'skills', 'cron', 'setup', 'todo', 'briefing'],
         interpolation: {
             escapeValue: false, // React already escapes
         },

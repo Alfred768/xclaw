@@ -6,7 +6,9 @@
         "channels": "Channels",
         "dashboard": "Dashboard",
         "settings": "Settings",
-        "devConsole": "Developer Console"
+        "devConsole": "Developer Console",
+        "todo": "Todo",
+        "briefing": "Briefing"
     },
     "actions": {
         "save": "Save",

@@ -1,0 +1,17 @@
+{
+    "title": "待办事项",
+    "description": "管理您的智能提取的行动项",
+    "pending": "待完成",
+    "completed": "已完成",
+    "addTask": "添加新任务...",
+    "add": "添加",
+    "dismiss": "忽略",
+    "loading": "加载任务中...",
+    "noTasks": "暂无任务",
+    "noTasksDesc": "上传文档或在聊天中输入「待办事项」，系统将自动提取行动项。",
+    "goToChat": "前往聊天",
+    "pendingTasks": "待完成",
+    "completedTasks": "已完成",
+    "created": "创建于",
+    "updated": "更新于"
+}

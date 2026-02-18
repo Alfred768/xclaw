@@ -1,0 +1,17 @@
+{
+    "title": " Todo",
+    "description": "抽出されたアクション項目を管理",
+    "pending": "未完了",
+    "completed": "完了",
+    "addTask": "新しいタスクを追加...",
+    "add": "追加",
+    "dismiss": "閉じる",
+    "loading": "タスク読み込み中...",
+    "noTasks": "タスクなし",
+    "noTasksDesc": "ドキュメントをアップロードするか、チャットで「Todo」と入力すると、アクション項目が自動的に抽出されます。",
+    "goToChat": "チャットへ",
+    "pendingTasks": "未完了",
+    "completedTasks": "完了",
+    "created": "作成日",
+    "updated": "更新日"
+}
