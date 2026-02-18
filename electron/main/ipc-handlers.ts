@@ -7,7 +7,7 @@ import { existsSync, copyFileSync, statSync, readFileSync, writeFileSync, mkdirS
 import { homedir } from 'node:os';
 import { join, extname, basename } from 'node:path';
 import crypto from 'node:crypto';
-import { search as ddgSearch } from 'duck-duck-scrape';
+// Using native fetch from Node.js 18+
 import { GatewayManager } from '../gateway/manager';
 import { ClawHubService, ClawHubSearchParams, ClawHubInstallParams, ClawHubUninstallParams } from '../gateway/clawhub';
 import {
@@ -1868,6 +1868,7 @@ function writeBriefingSettings(settings: BriefingSettings): void {
  */
 function readBriefingContent(): BriefingData {
   ensureBriefingStorageDir();
+  logger.info('[Briefing] Reading content from:', BRIEFING_CONTENT_PATH);
   const defaultData: BriefingData = {
     lastGenerated: null,
     content: '',
@@ -1890,13 +1891,17 @@ function readBriefingContent(): BriefingData {
       const lastGeneratedMatch = frontmatter.match(/lastGenerated:\s*(.+)/);
       const topicsMatch = frontmatter.match(/topics:\s*\[(.*)\]/);
 
-      return {
+      const result = {
         lastGenerated: lastGeneratedMatch ? lastGeneratedMatch[1].trim() : null,
         content,
         topics: topicsMatch ? topicsMatch[1].split(',').map(t => t.trim().replace(/"/g, '')) : [],
       };
+      logger.info('[Briefing] Read content, topics:', result.topics, 'content length:', result.content.length);
+      return result;
     }
-    return { ...defaultData, content: raw };
+    const result = { ...defaultData, content: raw };
+    logger.info('[Briefing] Read content (no frontmatter), length:', raw.length);
+    return result;
   } catch (err) {
     logger.error('Failed to read briefing content:', err);
     return defaultData;
@@ -1908,6 +1913,7 @@ function readBriefingContent(): BriefingData {
  */
 function writeBriefingContent(topics: string[], content: string): void {
   ensureBriefingStorageDir();
+  logger.info('[Briefing] Writing content, topics:', topics, 'content length:', content.length);
   const now = new Date().toISOString();
   const frontmatter = `---
 lastGenerated: ${now}
@@ -1978,46 +1984,96 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
   });
 
   // Generate briefing (triggers Gateway RPC)
-  ipcMain.handle('briefing:generate', async (_, params: {
-    topics: string[];
-    obsidianVaultPath: string;
+  ipcMain.handle('briefing:generate', async (_, args: {
+    topics?: string[];
+    obsidianVaultPath?: string;
     language?: string;
     searchMode?: 'knowledge' | 'web';
   }) => {
     try {
-      logger.info('[Briefing] Starting briefing generation for topics:', params.topics, 'mode:', params.searchMode);
+      // EXPLICIT PARAMETER PASSING: Use args.topics first, fallback to settings
+      let topicsToSearch: string[];
+
+      if (args.topics && args.topics.length > 0) {
+        // Primary: Use explicitly passed topics from frontend
+        topicsToSearch = args.topics;
+        logger.info('[Briefing] Using explicitly passed topics:', topicsToSearch);
+      } else {
+        // Fallback: Read from local settings (for backward compatibility/scheduled tasks)
+        const savedSettings = readBriefingSettings();
+        topicsToSearch = savedSettings.focusTopics;
+        logger.info('[Briefing] No topics in args, falling back to settings:', topicsToSearch);
+      }
+
+      logger.info('[Briefing] Starting briefing generation for topics:', topicsToSearch, 'mode:', args.searchMode);
 
       // Build language instruction
-      const langInstruction = params.language === 'zh'
+      const langInstruction = args.language === 'zh'
         ? '请用简体中文生成简报。'
-        : params.language === 'ja'
+        : args.language === 'ja'
         ? '日本語で生成してください。'
         : '';
 
-      const topicsList = params.topics.join(', ');
+      const topicsList = topicsToSearch.join(', ');
 
       // Server-side search (using duck-duck-scrape)
       let searchContext = '';
-      if (params.searchMode === 'web') {
+      if (args.searchMode === 'web') {
         logger.info('[Briefing] Performing server-side web search...');
         try {
           const searchResults: Array<{ title: string; url: string; snippet: string }> = [];
 
-          // Search for each topic
-          for (const topic of params.topics) {
-            const searchQuery = `${topic} latest news 2026`;
+          // Search for each topic with delay to avoid rate limiting
+          for (let i = 0; i < topicsToSearch.length; i++) {
+            const topic = topicsToSearch[i];
+            const searchQuery = `${topic} 今日新闻`;
             logger.info('[Briefing] Searching for:', searchQuery);
 
-            // Use duck-duck-scrape for search
-            const ddgResults = await ddgSearch(searchQuery, { safeSearch: 'STRICT' });
+            // Add delay between requests to avoid rate limiting
+            if (i > 0) {
+              logger.info('[Briefing] Waiting before next search...');
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
 
-            // Transform results to match expected format
-            const results = ddgResults.map((r: { title: string; url: string; snippet: string }) => ({
-              title: r.title,
-              url: r.url,
-              snippet: r.snippet,
-            }));
+            // Use Google News RSS - more reliable for news
+            const encodedQuery = encodeURIComponent(topic);
+            const rssUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=zh-CN&gl=CN&ceid=CN:zh`;
 
+            logger.info('[Briefing] Fetching RSS from:', rssUrl);
+
+            const response = await fetch(rssUrl, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+              }
+            });
+
+            const xml = await response.text();
+            logger.info('[Briefing] RSS response length:', xml.length);
+
+            // Parse RSS XML
+            const results: Array<{ title: string; url: string; snippet: string }> = [];
+            const itemRegex = /<item[^>]*>[\s\S]*?<\/item>/gi;
+            const itemMatches = xml.match(itemRegex) || [];
+
+            for (const item of itemMatches.slice(0, 10)) {
+              const titleMatch = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/);
+              const linkMatch = item.match(/<link>(.*?)<\/link>|<link><!\[CDATA\[(.*?)\]\]><\/link>/);
+              const descMatch = item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/);
+
+              const title = titleMatch ? (titleMatch[1] || titleMatch[2] || '').trim() : '';
+              const link = linkMatch ? (linkMatch[1] || linkMatch[2] || '').trim() : '';
+              const description = descMatch ? (descMatch[1] || descMatch[2] || '').trim() : '';
+
+              if (title && link) {
+                // Clean HTML from description
+                const cleanDesc = description.replace(/<[^>]+>/g, '').substring(0, 200);
+                results.push({ title, url: link, snippet: cleanDesc });
+              }
+            }
+
+            logger.info('[Briefing] Parsed RSS results:', results.length);
+
+            logger.info('[Briefing] HTML search results:', results.length);
             searchResults.push(...results);
           }
 
@@ -2028,6 +2084,7 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
               searchContext += `### ${r.title}\n${r.snippet}\n来源: ${r.url}\n\n`;
             }
             logger.info('[Briefing] Search completed, found', searchResults.length, 'results');
+            logger.info('[Briefing] Search context length:', searchContext.length);
           } else {
             logger.warn('[Briefing] No search results found');
           }
@@ -2039,7 +2096,7 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
 
       // Build prompt for LLM
       let prompt: string;
-      if (params.searchMode === 'web' && searchContext) {
+      if (args.searchMode === 'web' && searchContext) {
         // Web search mode - use server-side search results
         prompt = `${langInstruction}
 
@@ -2052,6 +2109,8 @@ ${searchContext}
 3. 相关链接列表
 
 生成一份结构化的每日简报。`;
+
+        logger.info('[Briefing] Using web search mode, prompt length:', prompt.length);
       } else {
         // Knowledge mode - use LLM's internal knowledge only
         prompt = `${langInstruction}
@@ -2072,47 +2131,116 @@ ${searchContext}
 生成一份结构化的每日简报。`;
       }
 
+      // Use a fixed session key to REUSE the same OpenClaw process
+      // This prevents spawning multiple OpenClaw instances which would exhaust memory
+      const sessionKey = 'agent:main:briefing';
+
       // Call Gateway to generate briefing
+      // Use idempotencyKey to ensure the same prompt doesn't produce duplicate runs
       const sendResult = await gatewayManager.rpc<{ runId?: string }>('chat.send', {
-        sessionKey: 'agent:main:briefing',
+        sessionKey,
         message: prompt,
         deliver: false,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: `briefing-${Date.now()}`,
       }, 120000);
 
       logger.info('[Briefing] Chat send result:', JSON.stringify(sendResult));
 
+      // Extract runId from the result
+      const runId = sendResult?.runId;
+      const sendTimestamp = Date.now();
+      logger.info('[Briefing] Run ID:', runId, 'sendTimestamp:', sendTimestamp);
+
       // Wait for the run to complete and get chat history
       // The chat.send is async, so we need to poll for results
       let briefingContent = '';
-      const maxRetries = 10;
-      const retryDelay = 2000;
+      const maxRetries = 20;
+      const retryDelay = 3000;
 
       for (let i = 0; i < maxRetries; i++) {
         await new Promise(resolve => setTimeout(resolve, retryDelay));
 
-        const historyResult = await gatewayManager.rpc<{ messages?: Array<{ role: string; content: unknown }> }>(
+        // Try using run.result first (more reliable if runId is available)
+        if (runId) {
+          try {
+            const runResult = await gatewayManager.rpc<{ result?: { content?: string } }>(
+              'run.result',
+              { runId }
+            );
+            logger.info(`[Briefing] Run result attempt ${i + 1}:`, JSON.stringify(runResult).substring(0, 300));
+
+            if (runResult?.result?.content) {
+              briefingContent = runResult.result.content;
+              logger.info('[Briefing] Got content from run.result, length:', briefingContent.length);
+              break;
+            }
+          } catch (e) {
+            logger.info(`[Briefing] Run result attempt ${i + 1} failed:`, String(e));
+          }
+        }
+
+        // Fallback: try chat.history - but ONLY get messages AFTER our sendTimestamp
+        // This prevents reading old cached messages from previous briefings
+        const historyResult = await gatewayManager.rpc<{
+          messages?: Array<{
+            role: string;
+            content: unknown;
+            timestamp?: number;
+            createdAtMs?: number;
+          }>
+        }>(
           'chat.history',
-          { sessionKey: 'agent:main:briefing', limit: 10 }
+          { sessionKey, limit: 50 }
         );
 
         logger.info(`[Briefing] History attempt ${i + 1}:`, historyResult ? Object.keys(historyResult) : 'null');
+        logger.info(`[Briefing] History messages count:`, historyResult?.messages?.length || 0);
 
         if (historyResult && historyResult.messages && historyResult.messages.length > 0) {
-          // Find the most recent assistant message
-          const messages = historyResult.messages as Array<{ role: string; content: unknown }>;
-          const assistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
+          const messages = historyResult.messages as Array<{
+            role: string;
+            content: unknown;
+            timestamp?: number;
+            createdAtMs?: number;
+          }>;
 
-          if (assistantMsg && assistantMsg.content) {
-            briefingContent = typeof assistantMsg.content === 'string'
-              ? assistantMsg.content
-              : JSON.stringify(assistantMsg.content);
+          // Find the newest user message (our prompt) - it should be after sendTimestamp
+          const ourUserMsg = [...messages].reverse().find(m =>
+            m.role === 'user' &&
+            ((m.timestamp && m.timestamp >= sendTimestamp) || (m.createdAtMs && m.createdAtMs >= sendTimestamp))
+          );
 
-            if (briefingContent.trim().length > 0) {
-              logger.info('[Briefing] Got content, length:', briefingContent.length);
-              break;
+          // If we can't find our message yet, continue waiting
+          if (!ourUserMsg) {
+            logger.info(`[Briefing] Our message not found yet in history, waiting...`);
+            continue;
+          }
+
+          // Now find the FIRST assistant message that comes AFTER our user message
+          // This is the actual response to our current prompt
+          const msgArray = [...messages];
+          const ourUserIndex = msgArray.indexOf(ourUserMsg);
+
+          // Look for assistant messages after our user message
+          for (let j = ourUserIndex + 1; j < msgArray.length; j++) {
+            const msg = msgArray[j];
+            if (msg.role === 'assistant' && msg.content) {
+              // Check if it's not an error message
+              const contentStr = JSON.stringify(msg.content);
+              if (!contentStr.includes('error') && !contentStr.includes('Error')) {
+                briefingContent = typeof msg.content === 'string'
+                  ? msg.content
+                  : JSON.stringify(msg.content);
+
+                if (briefingContent.trim().length > 0 && briefingContent.length > 50) {
+                  logger.info('[Briefing] Got content from new assistant message, length:', briefingContent.length);
+                  break;
+                }
+              }
             }
           }
+
+          if (briefingContent) break;
         }
       }
 
@@ -2122,19 +2250,23 @@ ${searchContext}
       }
 
       // Save to local storage
-      writeBriefingContent(params.topics, briefingContent);
+      writeBriefingContent(topicsToSearch, briefingContent);
 
       // Write to Obsidian if path is provided
-      let obsidianResult = { success: false };
-      if (params.obsidianVaultPath) {
-        obsidianResult = writeToObsidian(params.obsidianVaultPath, briefingContent);
+      let obsidianPath = '';
+      if (args.obsidianVaultPath) {
+        const obsidianResult = writeToObsidian(args.obsidianVaultPath, briefingContent);
         logger.info('[Briefing] Obsidian write result:', obsidianResult);
+        obsidianPath = obsidianResult.path || '';
       }
 
+      // Return content directly to avoid timing issues with file I/O
       return {
         success: true,
         content: briefingContent,
-        obsidianPath: obsidianResult.path,
+        obsidianPath,
+        topics: topicsToSearch,
+        lastGenerated: new Date().toISOString(),
       };
     } catch (error) {
       logger.error('[Briefing] Generation failed:', error);

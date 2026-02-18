@@ -79,8 +79,10 @@ export function Briefing() {
         settings?: BriefingSettings;
         error?: string;
       };
+      console.log('[Briefing] Fetched settings:', JSON.stringify(result));
       if (result.success && result.settings) {
         setSettings(result.settings);
+        console.log('[Briefing] Settings applied, focusTopics:', result.settings.focusTopics);
       }
     } catch (err) {
       console.error('Failed to fetch settings:', err);
@@ -107,11 +109,27 @@ export function Briefing() {
 
   const saveSettings = async () => {
     try {
-      const result = await window.electron.ipcRenderer.invoke('briefing:saveSettings', settings) as {
+      // Auto-add new topic if there's input
+      let topicsToSave = [...settings.focusTopics];
+      const newTopicLower = newTopic.trim().toLowerCase();
+
+      // Check for duplicates (case-insensitive)
+      const isDuplicate = topicsToSave.some(t => t.toLowerCase() === newTopicLower);
+
+      if (newTopic.trim() && !isDuplicate) {
+        topicsToSave = [...topicsToSave, newTopic.trim()];
+        setNewTopic('');
+      }
+
+      const settingsToSave = { ...settings, focusTopics: topicsToSave };
+
+      const result = await window.electron.ipcRenderer.invoke('briefing:saveSettings', settingsToSave) as {
         success: boolean;
         error?: string;
       };
+      console.log('[Briefing] Saved settings, topics:', settingsToSave.focusTopics);
       if (result.success) {
+        setSettings(settingsToSave);
         setShowSettings(false);
       } else {
         setError(result.error || 'Failed to save settings');
@@ -143,6 +161,8 @@ export function Briefing() {
       setGenerating(true);
       setError(null);
 
+      console.log('[Briefing] Generate called, topics:', settings.focusTopics);
+
       const result = await window.electron.ipcRenderer.invoke('briefing:generate', {
         topics: settings.focusTopics,
         obsidianVaultPath: settings.obsidianVaultPath,
@@ -152,11 +172,45 @@ export function Briefing() {
         success: boolean;
         content?: string;
         obsidianPath?: string;
+        topics?: string[];
+        lastGenerated?: string;
         error?: string;
       };
 
+      // Add a small delay to ensure backend file I/O is complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       if (result.success) {
-        await fetchContent();
+        // Use returned content directly instead of re-reading from file
+        if (result.content) {
+          console.log('[Briefing] Setting state with new content');
+
+          // Parse content if it's a JSON string (from Gateway response)
+          let parsedContent = result.content;
+          try {
+            const parsed = JSON.parse(result.content);
+            if (Array.isArray(parsed)) {
+              // Handle array of content blocks (new Gateway format)
+              parsedContent = parsed
+                .map((block: { type?: string; text?: string }) => block.text || '')
+                .join('');
+              console.log('[Briefing] Parsed content from JSON array');
+            }
+          } catch {
+            // Not JSON, use as-is
+          }
+
+          const newData = {
+            content: parsedContent,
+            topics: result.topics || settings.focusTopics,
+            lastGenerated: result.lastGenerated || new Date().toISOString(),
+          };
+          console.log('[Briefing] New data:', newData);
+          setBriefingData(newData);
+          console.log('[Briefing] State set, content length:', parsedContent.length);
+        } else {
+          console.log('[Briefing] ERROR: No content in result!');
+        }
         // Show Obsidian tip if path is set
         if (settings.obsidianVaultPath) {
           setShowObsidianTip(true);
