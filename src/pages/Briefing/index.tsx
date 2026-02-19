@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import {
   Settings,
   Play,
-  Download,
   Clock,
   FileText,
   RefreshCw,
@@ -18,6 +17,7 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -78,8 +78,10 @@ export function Briefing() {
         settings?: BriefingSettings;
         error?: string;
       };
+      console.log('[Briefing] Fetched settings:', JSON.stringify(result));
       if (result.success && result.settings) {
         setSettings(result.settings);
+        console.log('[Briefing] Settings applied, focusTopics:', result.settings.focusTopics);
       }
     } catch (err) {
       console.error('Failed to fetch settings:', err);
@@ -106,11 +108,27 @@ export function Briefing() {
 
   const saveSettings = async () => {
     try {
-      const result = await window.electron.ipcRenderer.invoke('briefing:saveSettings', settings) as {
+      // Auto-add new topic if there's input
+      let topicsToSave = [...settings.focusTopics];
+      const newTopicLower = newTopic.trim().toLowerCase();
+
+      // Check for duplicates (case-insensitive)
+      const isDuplicate = topicsToSave.some(t => t.toLowerCase() === newTopicLower);
+
+      if (newTopic.trim() && !isDuplicate) {
+        topicsToSave = [...topicsToSave, newTopic.trim()];
+        setNewTopic('');
+      }
+
+      const settingsToSave = { ...settings, focusTopics: topicsToSave };
+
+      const result = await window.electron.ipcRenderer.invoke('briefing:saveSettings', settingsToSave) as {
         success: boolean;
         error?: string;
       };
+      console.log('[Briefing] Saved settings, topics:', settingsToSave.focusTopics);
       if (result.success) {
+        setSettings(settingsToSave);
         setShowSettings(false);
       } else {
         setError(result.error || 'Failed to save settings');
@@ -142,6 +160,8 @@ export function Briefing() {
       setGenerating(true);
       setError(null);
 
+      console.log('[Briefing] Generate called, topics:', settings.focusTopics);
+
       const result = await window.electron.ipcRenderer.invoke('briefing:generate', {
         topics: settings.focusTopics,
         obsidianVaultPath: settings.obsidianVaultPath,
@@ -151,11 +171,45 @@ export function Briefing() {
         success: boolean;
         content?: string;
         obsidianPath?: string;
+        topics?: string[];
+        lastGenerated?: string;
         error?: string;
       };
 
+      // Add a small delay to ensure backend file I/O is complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       if (result.success) {
-        await fetchContent();
+        // Use returned content directly instead of re-reading from file
+        if (result.content) {
+          console.log('[Briefing] Setting state with new content');
+
+          // Parse content if it's a JSON string (from Gateway response)
+          let parsedContent = result.content;
+          try {
+            const parsed = JSON.parse(result.content);
+            if (Array.isArray(parsed)) {
+              // Handle array of content blocks (new Gateway format)
+              parsedContent = parsed
+                .map((block: { type?: string; text?: string }) => block.text || '')
+                .join('');
+              console.log('[Briefing] Parsed content from JSON array');
+            }
+          } catch {
+            // Not JSON, use as-is
+          }
+
+          const newData = {
+            content: parsedContent,
+            topics: result.topics || settings.focusTopics,
+            lastGenerated: result.lastGenerated || new Date().toISOString(),
+          };
+          console.log('[Briefing] New data:', newData);
+          setBriefingData(newData);
+          console.log('[Briefing] State set, content length:', parsedContent.length);
+        } else {
+          console.log('[Briefing] ERROR: No content in result!');
+        }
         // Show Obsidian tip if path is set
         if (settings.obsidianVaultPath) {
           setShowObsidianTip(true);
@@ -167,40 +221,6 @@ export function Briefing() {
       setError(String(err));
     } finally {
       setGenerating(false);
-    }
-  };
-
-  const downloadPDF = async () => {
-    if (!briefingData.content) return;
-
-    // Simple text-to-PDF using browser print
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Daily Briefing - ${new Date().toLocaleDateString()}</title>
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
-              h1 { color: #1a1a2e; }
-              h2 { color: #16213e; margin-top: 30px; }
-              p { line-height: 1.6; color: #333; }
-              a { color: #0066cc; }
-              .meta { color: #666; font-size: 14px; }
-              ul { padding-left: 20px; }
-              li { margin-bottom: 8px; }
-            </style>
-          </head>
-          <body>
-            <h1>Daily AI Briefing</h1>
-            <p class="meta">Generated: ${briefingData.lastGenerated ? new Date(briefingData.lastGenerated).toLocaleString() : 'N/A'}</p>
-            <p class="meta">Topics: ${briefingData.topics.join(', ')}</p>
-            ${briefingData.content.replace(/\n/g, '<br>')}
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
     }
   };
 
@@ -346,15 +366,9 @@ export function Briefing() {
               <div className="flex items-center gap-2">
                 <Badge variant="outline">{briefingData.topics.join(', ')}</Badge>
               </div>
-              <Button variant="outline" size="sm" onClick={downloadPDF}>
-                <Download className="h-4 w-4 mr-2" />
-                {t('downloadPDF')}
-              </Button>
             </div>
             <div className="prose prose-invert max-w-none">
-              <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                {briefingData.content}
-              </div>
+              <MarkdownRenderer content={briefingData.content} />
             </div>
 
             {/* Obsidian Tip */}

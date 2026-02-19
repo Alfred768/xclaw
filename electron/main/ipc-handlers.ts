@@ -7,6 +7,7 @@ import { existsSync, copyFileSync, statSync, readFileSync, writeFileSync, mkdirS
 import { homedir } from 'node:os';
 import { join, extname, basename } from 'node:path';
 import crypto from 'node:crypto';
+// Using native fetch from Node.js 18+
 import { GatewayManager } from '../gateway/manager';
 import { ClawHubService, ClawHubSearchParams, ClawHubInstallParams, ClawHubUninstallParams } from '../gateway/clawhub';
 import {
@@ -1615,6 +1616,23 @@ function registerFileHandlers(): void {
     }
     return results;
   });
+
+  // Save base64 data to file
+  ipcMain.handle('file:saveBase64', async (_, params: {
+    data: string;
+    filePath: string;
+  }) => {
+    try {
+      const fs = require('fs');
+      const buffer = Buffer.from(params.data, 'base64');
+      fs.writeFileSync(params.filePath, buffer);
+      logger.info('[File] Saved base64 data to:', params.filePath);
+      return { success: true };
+    } catch (error) {
+      logger.error('[File] Failed to save base64 data:', error);
+      return { success: false, error: String(error) };
+    }
+  });
 }
 
 // ── Todo List handlers ──────────────────────────────────────────────
@@ -1831,7 +1849,7 @@ function readBriefingSettings(): BriefingSettings {
     focusTopics: ['AI News', 'Bitcoin'],
     obsidianVaultPath: '',
     timezoneOffset: -new Date().getTimezoneOffset(),
-    enabled: false,
+    enabled: true,
     searchMode: 'knowledge',
   };
 
@@ -1841,7 +1859,7 @@ function readBriefingSettings(): BriefingSettings {
 
   try {
     const raw = readFileSync(BRIEFING_SETTINGS_PATH, 'utf-8');
-    return { ...defaultSettings, ...JSON.parse(raw) };
+    return { ...defaultSettings, ...JSON.parse(raw), enabled: true };
   } catch (err) {
     logger.error('Failed to read briefing settings:', err);
     return defaultSettings;
@@ -1867,6 +1885,7 @@ function writeBriefingSettings(settings: BriefingSettings): void {
  */
 function readBriefingContent(): BriefingData {
   ensureBriefingStorageDir();
+  logger.info('[Briefing] Reading content from:', BRIEFING_CONTENT_PATH);
   const defaultData: BriefingData = {
     lastGenerated: null,
     content: '',
@@ -1889,13 +1908,17 @@ function readBriefingContent(): BriefingData {
       const lastGeneratedMatch = frontmatter.match(/lastGenerated:\s*(.+)/);
       const topicsMatch = frontmatter.match(/topics:\s*\[(.*)\]/);
 
-      return {
+      const result = {
         lastGenerated: lastGeneratedMatch ? lastGeneratedMatch[1].trim() : null,
         content,
         topics: topicsMatch ? topicsMatch[1].split(',').map(t => t.trim().replace(/"/g, '')) : [],
       };
+      logger.info('[Briefing] Read content, topics:', result.topics, 'content length:', result.content.length);
+      return result;
     }
-    return { ...defaultData, content: raw };
+    const result = { ...defaultData, content: raw };
+    logger.info('[Briefing] Read content (no frontmatter), length:', raw.length);
+    return result;
   } catch (err) {
     logger.error('Failed to read briefing content:', err);
     return defaultData;
@@ -1907,6 +1930,7 @@ function readBriefingContent(): BriefingData {
  */
 function writeBriefingContent(topics: string[], content: string): void {
   ensureBriefingStorageDir();
+  logger.info('[Briefing] Writing content, topics:', topics, 'content length:', content.length);
   const now = new Date().toISOString();
   const frontmatter = `---
 lastGenerated: ${now}
@@ -1977,30 +2001,124 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
   });
 
   // Generate briefing (triggers Gateway RPC)
-  ipcMain.handle('briefing:generate', async (_, params: {
-    topics: string[];
-    obsidianVaultPath: string;
+  ipcMain.handle('briefing:generate', async (_, args: {
+    topics?: string[];
+    obsidianVaultPath?: string;
     language?: string;
     searchMode?: 'knowledge' | 'web';
   }) => {
     try {
-      logger.info('[Briefing] Starting briefing generation for topics:', params.topics, 'mode:', params.searchMode);
+      // EXPLICIT PARAMETER PASSING: Use args.topics first, fallback to settings
+      let topicsToSearch: string[];
 
-      // Build prompt for LLM to generate briefing
-      const langInstruction = params.language === 'zh'
+      if (args.topics && args.topics.length > 0) {
+        // Primary: Use explicitly passed topics from frontend
+        topicsToSearch = args.topics;
+        logger.info('[Briefing] Using explicitly passed topics:', topicsToSearch);
+      } else {
+        // Fallback: Read from local settings (for backward compatibility/scheduled tasks)
+        const savedSettings = readBriefingSettings();
+        topicsToSearch = savedSettings.focusTopics;
+        logger.info('[Briefing] No topics in args, falling back to settings:', topicsToSearch);
+      }
+
+      logger.info('[Briefing] Starting briefing generation for topics:', topicsToSearch, 'mode:', args.searchMode);
+
+      // Build language instruction
+      const langInstruction = args.language === 'zh'
         ? '请用简体中文生成简报。'
-        : params.language === 'ja'
+        : args.language === 'ja'
         ? '日本語で生成してください。'
         : '';
 
-      const topicsList = params.topics.join(', ');
+      const topicsList = topicsToSearch.join(', ');
 
+      // Server-side search (using duck-duck-scrape)
+      let searchContext = '';
+      if (args.searchMode === 'web') {
+        logger.info('[Briefing] Performing server-side web search...');
+        try {
+          const searchResults: Array<{ title: string; url: string; snippet: string }> = [];
+
+          // Search for each topic with delay to avoid rate limiting
+          for (let i = 0; i < topicsToSearch.length; i++) {
+            const topic = topicsToSearch[i];
+            const searchQuery = `${topic} 今日新闻`;
+            logger.info('[Briefing] Searching for:', searchQuery);
+
+            // Add delay between requests to avoid rate limiting
+            if (i > 0) {
+              logger.info('[Briefing] Waiting before next search...');
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+
+            // Use Google News RSS - more reliable for news
+            const encodedQuery = encodeURIComponent(topic);
+            const rssUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=zh-CN&gl=CN&ceid=CN:zh`;
+
+            logger.info('[Briefing] Fetching RSS from:', rssUrl);
+
+            const response = await fetch(rssUrl, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+              }
+            });
+
+            const xml = await response.text();
+            logger.info('[Briefing] RSS response length:', xml.length);
+
+            // Parse RSS XML
+            const results: Array<{ title: string; url: string; snippet: string }> = [];
+            const itemRegex = /<item[^>]*>[\s\S]*?<\/item>/gi;
+            const itemMatches = xml.match(itemRegex) || [];
+
+            for (const item of itemMatches.slice(0, 10)) {
+              const titleMatch = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/);
+              const linkMatch = item.match(/<link>(.*?)<\/link>|<link><!\[CDATA\[(.*?)\]\]><\/link>/);
+              const descMatch = item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/);
+
+              const title = titleMatch ? (titleMatch[1] || titleMatch[2] || '').trim() : '';
+              const link = linkMatch ? (linkMatch[1] || linkMatch[2] || '').trim() : '';
+              const description = descMatch ? (descMatch[1] || descMatch[2] || '').trim() : '';
+
+              if (title && link) {
+                // Clean HTML from description
+                const cleanDesc = description.replace(/<[^>]+>/g, '').substring(0, 200);
+                results.push({ title, url: link, snippet: cleanDesc });
+              }
+            }
+
+            logger.info('[Briefing] Parsed RSS results:', results.length);
+
+            logger.info('[Briefing] HTML search results:', results.length);
+            searchResults.push(...results);
+          }
+
+          // Format search results as context for LLM
+          if (searchResults.length > 0) {
+            searchContext = `\n\n## 搜索结果 (Web Search Results):\n\n`;
+            for (const r of searchResults) {
+              searchContext += `### ${r.title}\n${r.snippet}\n来源: ${r.url}\n\n`;
+            }
+            logger.info('[Briefing] Search completed, found', searchResults.length, 'results');
+            logger.info('[Briefing] Search context length:', searchContext.length);
+          } else {
+            logger.warn('[Briefing] No search results found');
+          }
+        } catch (searchError) {
+          logger.error('[Briefing] Search failed:', searchError);
+          // Continue without search context
+        }
+      }
+
+      // Build prompt for LLM
       let prompt: string;
-      if (params.searchMode === 'web') {
-        // Web search mode - LLM will try to use search tools
+      if (args.searchMode === 'web' && searchContext) {
+        // Web search mode - use server-side search results
         prompt = `${langInstruction}
 
-请搜索并总结以下话题的最新新闻：${topicsList}
+请基于以下搜索结果，总结以下话题的最新新闻：${topicsList}
+${searchContext}
 
 请以 Obsidian 友好的 Markdown 格式生成每日简报，包含：
 1. 每个话题的标题
@@ -2008,6 +2126,8 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
 3. 相关链接列表
 
 生成一份结构化的每日简报。`;
+
+        logger.info('[Briefing] Using web search mode, prompt length:', prompt.length);
       } else {
         // Knowledge mode - use LLM's internal knowledge only
         prompt = `${langInstruction}
@@ -2028,45 +2148,142 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
 生成一份结构化的每日简报。`;
       }
 
+      // Use a fixed session key to REUSE the same OpenClaw process
+      // This prevents spawning multiple OpenClaw instances which would exhaust memory
+      const sessionKey = 'agent:main:briefing';
+
       // Call Gateway to generate briefing
-      const result = await gatewayManager.rpc('chat.send', {
-        sessionKey: 'agent:main:briefing',
+      // Use idempotencyKey to ensure the same prompt doesn't produce duplicate runs
+      const sendResult = await gatewayManager.rpc<{ runId?: string }>('chat.send', {
+        sessionKey,
         message: prompt,
         deliver: false,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: `briefing-${Date.now()}`,
       }, 120000);
 
-      logger.info('[Briefing] LLM response received');
+      logger.info('[Briefing] Chat send result:', JSON.stringify(sendResult));
 
-      // Extract content from response
+      // Extract runId from the result
+      const runId = sendResult?.runId;
+      const sendTimestamp = Date.now();
+      logger.info('[Briefing] Run ID:', runId, 'sendTimestamp:', sendTimestamp);
+
+      // Wait for the run to complete and get chat history
+      // The chat.send is async, so we need to poll for results
       let briefingContent = '';
-      if (result && result.messages) {
-        const assistantMsg = result.messages.find((m: { role: string }) => m.role === 'assistant');
-        if (assistantMsg && assistantMsg.content) {
-          briefingContent = typeof assistantMsg.content === 'string'
-            ? assistantMsg.content
-            : JSON.stringify(assistantMsg.content);
+      const maxRetries = 20;
+      const retryDelay = 3000;
+
+      for (let i = 0; i < maxRetries; i++) {
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+
+        // Try using run.result first (more reliable if runId is available)
+        if (runId) {
+          try {
+            const runResult = await gatewayManager.rpc<{ result?: { content?: string } }>(
+              'run.result',
+              { runId }
+            );
+            logger.info(`[Briefing] Run result attempt ${i + 1}:`, JSON.stringify(runResult).substring(0, 300));
+
+            if (runResult?.result?.content) {
+              briefingContent = runResult.result.content;
+              logger.info('[Briefing] Got content from run.result, length:', briefingContent.length);
+              break;
+            }
+          } catch (e) {
+            logger.info(`[Briefing] Run result attempt ${i + 1} failed:`, String(e));
+          }
+        }
+
+        // Fallback: try chat.history - but ONLY get messages AFTER our sendTimestamp
+        // This prevents reading old cached messages from previous briefings
+        const historyResult = await gatewayManager.rpc<{
+          messages?: Array<{
+            role: string;
+            content: unknown;
+            timestamp?: number;
+            createdAtMs?: number;
+          }>
+        }>(
+          'chat.history',
+          { sessionKey, limit: 50 }
+        );
+
+        logger.info(`[Briefing] History attempt ${i + 1}:`, historyResult ? Object.keys(historyResult) : 'null');
+        logger.info(`[Briefing] History messages count:`, historyResult?.messages?.length || 0);
+
+        if (historyResult && historyResult.messages && historyResult.messages.length > 0) {
+          const messages = historyResult.messages as Array<{
+            role: string;
+            content: unknown;
+            timestamp?: number;
+            createdAtMs?: number;
+          }>;
+
+          // Find the newest user message (our prompt) - it should be after sendTimestamp
+          const ourUserMsg = [...messages].reverse().find(m =>
+            m.role === 'user' &&
+            ((m.timestamp && m.timestamp >= sendTimestamp) || (m.createdAtMs && m.createdAtMs >= sendTimestamp))
+          );
+
+          // If we can't find our message yet, continue waiting
+          if (!ourUserMsg) {
+            logger.info(`[Briefing] Our message not found yet in history, waiting...`);
+            continue;
+          }
+
+          // Now find the FIRST assistant message that comes AFTER our user message
+          // This is the actual response to our current prompt
+          const msgArray = [...messages];
+          const ourUserIndex = msgArray.indexOf(ourUserMsg);
+
+          // Look for assistant messages after our user message
+          for (let j = ourUserIndex + 1; j < msgArray.length; j++) {
+            const msg = msgArray[j];
+            if (msg.role === 'assistant' && msg.content) {
+              // Check if it's not an error message
+              const contentStr = JSON.stringify(msg.content);
+              if (!contentStr.includes('error') && !contentStr.includes('Error')) {
+                briefingContent = typeof msg.content === 'string'
+                  ? msg.content
+                  : JSON.stringify(msg.content);
+
+                if (briefingContent.trim().length > 0 && briefingContent.length > 50) {
+                  logger.info('[Briefing] Got content from new assistant message, length:', briefingContent.length);
+                  break;
+                }
+              }
+            }
+          }
+
+          if (briefingContent) break;
         }
       }
 
       if (!briefingContent) {
+        logger.error('[Briefing] Failed to get briefing content after retries');
         return { success: false, error: 'Failed to generate briefing content' };
       }
 
       // Save to local storage
-      writeBriefingContent(params.topics, briefingContent);
+      writeBriefingContent(topicsToSearch, briefingContent);
 
       // Write to Obsidian if path is provided
-      let obsidianResult = { success: false };
-      if (params.obsidianVaultPath) {
-        obsidianResult = writeToObsidian(params.obsidianVaultPath, briefingContent);
+      let obsidianPath = '';
+      if (args.obsidianVaultPath) {
+        const obsidianResult = writeToObsidian(args.obsidianVaultPath, briefingContent);
         logger.info('[Briefing] Obsidian write result:', obsidianResult);
+        obsidianPath = obsidianResult.path || '';
       }
 
+      // Return content directly to avoid timing issues with file I/O
       return {
         success: true,
         content: briefingContent,
-        obsidianPath: obsidianResult.path,
+        obsidianPath,
+        topics: topicsToSearch,
+        lastGenerated: new Date().toISOString(),
       };
     } catch (error) {
       logger.error('[Briefing] Generation failed:', error);
@@ -2109,6 +2326,129 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
 
       return { success: true, path: result.filePaths[0] };
     } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Print HTML to PDF
+  ipcMain.handle('briefing:printToPDF', async (_, params: {
+    html: string;
+    filePath: string;
+  }) => {
+    try {
+      const { BrowserWindow } = require('electron');
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+
+      const pdfWindow = new BrowserWindow({
+        width: 900,
+        height: 1200,
+        show: false,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+        },
+      });
+
+      // Write HTML to temp file
+      const tempHtmlPath = path.join(os.tmpdir(), `briefing_${Date.now()}.html`);
+      fs.writeFileSync(tempHtmlPath, params.html, 'utf8');
+
+      logger.info('[Briefing] Loading HTML from temp file for PDF');
+
+      // Load HTML
+      await pdfWindow.loadFile(tempHtmlPath);
+
+      // Wait for render
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Generate PDF
+      const pdfData = await pdfWindow.webContents.printToPDF({
+        printBackground: true,
+        pageSize: 'A4',
+        margins: { marginType: 'custom', top: 0.5, bottom: 0.5, left: 0.5, right: 0.5 },
+        scale: 1.0,
+      });
+
+      // Save PDF
+      fs.writeFileSync(params.filePath, pdfData);
+
+      // Clean up
+      try { fs.unlinkSync(tempHtmlPath); } catch {}
+      pdfWindow.close();
+
+      logger.info('[Briefing] PDF saved:', params.filePath);
+      return { success: true };
+    } catch (error) {
+      logger.error('[Briefing] PDF generation failed:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Generate PDF from HTML (legacy)
+  ipcMain.handle('briefing:savePDF', async (_, params: {
+    html: string;
+    filePath: string;
+  }) => {
+    try {
+      // Create a hidden BrowserWindow to render the HTML and print to PDF
+      const { BrowserWindow } = require('electron');
+
+      const pdfWindow = new BrowserWindow({
+        width: 900,
+        height: 1200,
+        show: false,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+        },
+      });
+
+      // Write HTML to a temporary file and load from file (more reliable for large content)
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+      const tempHtmlPath = path.join(os.tmpdir(), `briefing_pdf_${Date.now()}.html`);
+
+      // Write HTML to temp file with proper BOM for encoding
+      fs.writeFileSync(tempHtmlPath, '\ufeff' + params.html, 'utf8');
+
+      logger.info('[Briefing] Loading HTML from temp file:', tempHtmlPath);
+
+      // Load HTML from file
+      await pdfWindow.loadFile(tempHtmlPath);
+
+      // Wait for content to fully render
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Generate PDF with better settings
+      const pdfData = await pdfWindow.webContents.printToPDF({
+        printBackground: true,
+        pageSize: 'A4',
+        margins: {
+          marginType: 'custom',
+          top: 0.4,
+          bottom: 0.4,
+          left: 0.4,
+          right: 0.4,
+        },
+        scale: 1.0,
+      });
+
+      // Write PDF to file
+      fs.writeFileSync(params.filePath, pdfData);
+
+      // Clean up temp file
+      fs.unlinkSync(tempHtmlPath);
+
+      // Close the window
+      pdfWindow.close();
+
+      logger.info('[Briefing] PDF saved to:', params.filePath);
+      return { success: true, path: params.filePath };
+    } catch (error) {
+      logger.error('[Briefing] Failed to save PDF:', error);
       return { success: false, error: String(error) };
     }
   });
