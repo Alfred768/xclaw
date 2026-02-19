@@ -2452,4 +2452,211 @@ ${searchContext}
       return { success: false, error: String(error) };
     }
   });
+
+  // ============================================================
+  // Briefing Scheduled Auto-Generation
+  // ============================================================
+
+  let briefingSchedulerInterval: NodeJS.Timeout | null = null;
+  let lastGeneratedDate: string | null = null;
+
+  function startBriefingScheduler(gm: GatewayManager): void {
+    if (briefingSchedulerInterval) return;
+
+    logger.info('[Briefing Scheduler] Starting scheduler');
+
+    briefingSchedulerInterval = setInterval(async () => {
+      try {
+        const settings = readBriefingSettings();
+
+        // Check if auto-generation is enabled
+        if (!settings.enabled) {
+          return;
+        }
+
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+
+        // Already generated today, skip
+        if (lastGeneratedDate === today) {
+          return;
+        }
+
+        // Check if it's time to generate (within 1 minute window)
+        const [targetHour, targetMinute] = settings.briefingTime.split(':').map(Number);
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+
+        // Only trigger exactly at the scheduled time
+        if (currentHour !== targetHour || currentMinute !== targetMinute) {
+          return;
+        }
+
+        logger.info('[Briefing Scheduler] Triggering scheduled briefing generation for:', today);
+
+        // Call the briefing:generate IPC handler logic directly
+        // We'll invoke ourselves via ipcMain.handle breakdown
+        try {
+          const generateResult = await generateBriefingInternal(gm, {
+            topics: settings.focusTopics,
+            obsidianVaultPath: settings.obsidianVaultPath,
+            language: 'en',
+            searchMode: settings.searchMode || 'web',
+          });
+
+          if (generateResult.success) {
+            lastGeneratedDate = today;
+            logger.info('[Briefing Scheduler] Scheduled briefing generated successfully');
+          } else {
+            logger.error('[Briefing Scheduler] Failed:', generateResult.error);
+          }
+        } catch (genError) {
+          logger.error('[Briefing Scheduler] Generation error:', genError);
+        }
+      } catch (error) {
+        logger.error('[Briefing Scheduler] Error:', error);
+      }
+    }, 60000); // Check every minute
+  }
+
+  // Internal function to generate briefing (reused by scheduler)
+  async function generateBriefingInternal(gm: GatewayManager, args: {
+    topics: string[];
+    obsidianVaultPath?: string;
+    language?: string;
+    searchMode?: 'knowledge' | 'web';
+  }): Promise<{ success: boolean; content?: string; error?: string }> {
+    try {
+      const topicsToSearch = args.topics;
+      logger.info('[Briefing Scheduler] Generating for topics:', topicsToSearch);
+
+      // Build language instruction
+      const langInstruction = args.language === 'zh'
+        ? '请用简体中文生成简报。'
+        : '';
+
+      const topicsList = topicsToSearch.join(', ');
+
+      // Server-side search
+      let searchContext = '';
+      if (args.searchMode === 'web') {
+        try {
+          const searchResults: Array<{ title: string; url: string; snippet: string }> = [];
+
+          for (const topic of topicsToSearch) {
+            const encodedQuery = encodeURIComponent(topic);
+            const rssUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=zh-CN&gl=CN&ceid=CN:zh`;
+
+            const response = await fetch(rssUrl, {
+              headers: { 'User-Agent': 'Mozilla/5.0' }
+            });
+
+            const xml = await response.text();
+            const itemRegex = /<item[^>]*>[\s\S]*?<\/item>/gi;
+            const itemMatches = xml.match(itemRegex) || [];
+
+            for (const item of itemMatches.slice(0, 10)) {
+              const titleMatch = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/);
+              const linkMatch = item.match(/<link>(.*?)<\/link>|<link><!\[CDATA\[(.*?)\]\]><\/link>/);
+              const descMatch = item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/);
+
+              const title = titleMatch ? (titleMatch[1] || titleMatch[2] || '').trim() : '';
+              const link = linkMatch ? (linkMatch[1] || linkMatch[2] || '').trim() : '';
+              const description = descMatch ? (descMatch[1] || descMatch[2] || '').trim() : '';
+
+              if (title && link) {
+                const cleanDesc = description.replace(/<[^>]+>/g, '').substring(0, 200);
+                searchResults.push({ title, url: link, snippet: cleanDesc });
+              }
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+
+          if (searchResults.length > 0) {
+            searchContext = '\n\n## 搜索结果:\n\n';
+            for (const r of searchResults) {
+              searchContext += `### ${r.title}\n${r.snippet}\n来源: ${r.url}\n\n`;
+            }
+          }
+        } catch (searchError) {
+          logger.error('[Briefing Scheduler] Search failed:', searchError);
+        }
+      }
+
+      // Build prompt
+      const prompt = `${langInstruction}
+
+请基于以下搜索结果，总结以下话题的最新新闻：${topicsList}
+${searchContext}
+
+请以 Markdown 格式生成每日简报。`;
+
+      // Use fixed session for scheduler
+      const sessionKey = 'agent:main:briefing';
+
+      const sendResult = await gm.rpc('chat.send', {
+        sessionKey,
+        message: prompt,
+        deliver: false,
+        idempotencyKey: `scheduled-${Date.now()}`,
+      }, 120000);
+
+      // Wait for response
+      let briefingContent = '';
+      const sendTimestamp = Date.now();
+
+      for (let i = 0; i < 20; i++) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        const historyResult = await gm.rpc('chat.history', { sessionKey, limit: 50 });
+
+        if (historyResult && historyResult.messages && historyResult.messages.length > 0) {
+          const messages = historyResult.messages as Array<{ role: string; content: unknown; timestamp?: number }>;
+
+          const ourUserMsg = [...messages].reverse().find(m =>
+            m.role === 'user' && m.timestamp && m.timestamp >= sendTimestamp
+          );
+
+          if (!ourUserMsg) continue;
+
+          const msgArray = [...messages];
+          const ourUserIndex = msgArray.indexOf(ourUserMsg);
+
+          for (let j = ourUserIndex + 1; j < msgArray.length; j++) {
+            const msg = msgArray[j];
+            if (msg.role === 'assistant' && msg.content) {
+              const contentStr = JSON.stringify(msg.content);
+              if (!contentStr.includes('error') && contentStr.length > 50) {
+                briefingContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+                break;
+              }
+            }
+          }
+
+          if (briefingContent) break;
+        }
+      }
+
+      if (!briefingContent) {
+        return { success: false, error: 'Failed to get content' };
+      }
+
+      // Save content
+      writeBriefingContent(topicsToSearch, briefingContent);
+
+      // Write to Obsidian if path is set
+      if (args.obsidianVaultPath) {
+        writeToObsidian(args.obsidianVaultPath, briefingContent);
+      }
+
+      return { success: true, content: briefingContent };
+    } catch (error) {
+      logger.error('[Briefing Scheduler] Internal error:', error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  // Start the scheduler when briefing handlers are registered
+  startBriefingScheduler(gatewayManager);
 }
