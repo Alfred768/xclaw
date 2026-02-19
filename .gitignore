@@ -62,3 +62,7 @@ build/
 
 .cursor/
 .pnpm-store/
+
+# Local user data (do not commit)
+.openclaw/
+.clawx-data/
