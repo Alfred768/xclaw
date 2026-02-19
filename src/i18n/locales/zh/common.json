@@ -8,7 +8,8 @@
         "settings": "设置",
         "devConsole": "开发者控制台",
         "todo": "待办事项",
-        "briefing": "每日简报"
+        "briefing": "每日简报",
+        "usage": "使用分析"
     },
     "actions": {
         "save": "保存",

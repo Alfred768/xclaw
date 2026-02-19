@@ -47,6 +47,9 @@ import { checkUvInstalled, installUv, setupManagedPython } from '../utils/uv-set
 import { updateSkillConfig, getSkillConfig, getAllSkillConfigs } from '../utils/skill-config';
 import { whatsAppLoginManager } from '../utils/whatsapp-login';
 import { getProviderConfig } from '../utils/provider-registry';
+import { loadUsageRecords, getUsageStats, clearUsageRecords, addUsageRecord } from '../utils/usage-storage';
+import { getDefaultProvider, getProvider } from '../utils/secure-storage';
+import { getProviderDefaultModel } from '../utils/provider-registry';
 
 /**
  * Register all IPC handlers
@@ -103,6 +106,9 @@ export function registerIpcHandlers(
 
   // Briefing handlers (Daily AI Briefing)
   registerBriefingHandlers(gatewayManager);
+
+  // Usage handlers
+  registerUsageHandlers();
 }
 
 /**
@@ -563,9 +569,98 @@ function registerGatewayHandlers(
     }
   });
 
-  gatewayManager.on('chat:message', (data) => {
+  gatewayManager.on('chat:message', async (data) => {
+    // Forward to renderer
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send('gateway:chat-message', data);
+    }
+
+    // Record usage when chat response is received
+    try {
+      // Data structure: { message: { message: { content, role, ... }, state, ... } }
+      // Or: { message: { runId, sessionKey, seq, state, message: { content, ... } } }
+      let messageContent = '';
+      let messageModel = 'unknown';
+      let messageState = '';
+
+      // data.message is the outer wrapper
+      if (data.message && typeof data.message === 'object') {
+        const outer = data.message as Record<string, unknown>;
+
+        // Get state from outer.state
+        if (outer.state) {
+          messageState = String(outer.state);
+        }
+
+        // Check for model in outer message
+        if (outer.model) {
+          messageModel = String(outer.model);
+        }
+
+        // outer.message contains the actual message content
+        if (outer.message && typeof outer.message === 'object') {
+          const inner = outer.message as Record<string, unknown>;
+
+          // Content can be a string or an array
+          if (typeof inner.content === 'string') {
+            messageContent = inner.content;
+          } else if (Array.isArray(inner.content)) {
+            messageContent = inner.content
+              .map((part: unknown) => (typeof part === 'string' ? part : (part as Record<string, unknown>)?.text || ''))
+              .join('');
+          }
+
+          // Check for other possible content fields
+          if (!messageContent && inner.text) {
+            messageContent = String(inner.text);
+          }
+          if (!messageContent && inner.output) {
+            messageContent = String(inner.output);
+          }
+
+          // Get model from inner
+          if (messageModel === 'unknown' && inner.model) {
+            messageModel = String(inner.model);
+          }
+        }
+      }
+
+      // Also check if content is directly in data.message
+      if (!messageContent && data.message && typeof data.message === 'object') {
+        const msg = data.message as Record<string, unknown>;
+        if (msg.content) {
+          messageContent = String(msg.content);
+        }
+      }
+
+      // Only record on "final" state to avoid double counting
+      if (messageState !== 'final') {
+        return;
+      }
+
+      // If model is unknown, get it from settings
+      if (messageModel === 'unknown') {
+        messageModel = await getCurrentModel();
+      }
+
+      // Record when we have content
+      // Estimate tokens: ~4 characters per token
+      const estimatedTokens = Math.ceil(messageContent.length / 4);
+
+      // Get provider from model name
+      const provider = messageModel.includes('/') ? messageModel.split('/')[0] : 'custom';
+
+      addUsageRecord({
+        timestamp: Date.now(),
+        model: messageModel,
+        provider: provider,
+        promptTokens: 0,
+        completionTokens: estimatedTokens,
+        totalTokens: estimatedTokens,
+      });
+      logger.info('[Usage] Recorded:', { model: messageModel, tokens: estimatedTokens, state: messageState });
+    } catch (error) {
+      logger.warn('[Usage] Error:', error);
     }
   });
 
@@ -2659,4 +2754,85 @@ ${searchContext}
 
   // Start the scheduler when briefing handlers are registered
   startBriefingScheduler(gatewayManager);
+}
+
+// ── Usage (Token Usage Tracking) handlers ─────────────────────────────────
+
+function registerUsageHandlers(): void {
+  // Get usage records
+  ipcMain.handle('usage:getRecords', async (_, params: { startTime: number; endTime: number }) => {
+    try {
+      const records = getUsageStats(params.startTime, params.endTime);
+      return { success: true, data: records };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Get all usage records (for detailed view)
+  ipcMain.handle('usage:getAllRecords', async (_, params?: { limit?: number }) => {
+    try {
+      const records = loadUsageRecords();
+      const limited = params?.limit ? records.slice(-params.limit) : records;
+      return { success: true, data: limited };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Clear usage records
+  ipcMain.handle('usage:clear', async () => {
+    try {
+      clearUsageRecords();
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Get current model from settings
+  ipcMain.handle('usage:getCurrentModel', async () => {
+    try {
+      const defaultProviderId = await getDefaultProvider();
+      if (defaultProviderId) {
+        const provider = await getProvider(defaultProviderId);
+        if (provider?.model) {
+          return { success: true, model: provider.model };
+        }
+        // Fall back to default model for this provider type
+        const defaultModel = getProviderDefaultModel(defaultProviderId);
+        if (defaultModel) {
+          return { success: true, model: defaultModel };
+        }
+      }
+      return { success: true, model: 'unknown' };
+    } catch (error) {
+      return { success: false, model: 'unknown', error: String(error) };
+    }
+  });
+}
+
+// Cache for current model (refreshed periodically)
+let cachedModel: string = 'unknown';
+
+async function getCurrentModel(): Promise<string> {
+  try {
+    const defaultProviderId = await getDefaultProvider();
+    if (defaultProviderId) {
+      const provider = await getProvider(defaultProviderId);
+      if (provider?.model) {
+        cachedModel = provider.model;
+        return cachedModel;
+      }
+      // Fall back to default model for this provider type
+      const defaultModel = getProviderDefaultModel(defaultProviderId);
+      if (defaultModel) {
+        cachedModel = defaultModel;
+        return cachedModel;
+      }
+    }
+  } catch {
+    // Silent fail, use cached model
+  }
+  return cachedModel;
 }
