@@ -93,7 +93,7 @@ export function Usage() {
           <p className="text-muted-foreground">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={timeRange} onChange={handleTimeRangeChange}>
+          <Select value={timeRange} onChange={handleTimeRangeChange} className="bg-card border-border">
             <option value="7d">{t('timeRange.last7Days')}</option>
             <option value="30d">{t('timeRange.last30Days')}</option>
             <option value="90d">{t('timeRange.last90Days')}</option>
