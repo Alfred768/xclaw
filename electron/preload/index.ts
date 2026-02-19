@@ -137,12 +137,16 @@ const electronAPI = {
         'briefing:saveToObsidian',
         'briefing:getStoragePath',
         'briefing:selectDirectory',
+        'briefing:savePDF',
+        'briefing:printToPDF',
         // OpenClaw extras
         'openclaw:getDir',
         'openclaw:getConfigDir',
         'openclaw:getSkillsDir',
         'openclaw:getCliCommand',
         'openclaw:installCliMac',
+        // File operations
+        'file:saveBase64',
       ];
 
       if (validChannels.includes(channel)) {

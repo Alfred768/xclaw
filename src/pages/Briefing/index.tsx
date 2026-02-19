@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import {
   Settings,
   Play,
-  Download,
   Clock,
   FileText,
   RefreshCw,
@@ -225,40 +224,6 @@ export function Briefing() {
     }
   };
 
-  const downloadPDF = async () => {
-    if (!briefingData.content) return;
-
-    // Simple text-to-PDF using browser print
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Daily Briefing - ${new Date().toLocaleDateString()}</title>
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
-              h1 { color: #1a1a2e; }
-              h2 { color: #16213e; margin-top: 30px; }
-              p { line-height: 1.6; color: #333; }
-              a { color: #0066cc; }
-              .meta { color: #666; font-size: 14px; }
-              ul { padding-left: 20px; }
-              li { margin-bottom: 8px; }
-            </style>
-          </head>
-          <body>
-            <h1>Daily AI Briefing</h1>
-            <p class="meta">Generated: ${briefingData.lastGenerated ? new Date(briefingData.lastGenerated).toLocaleString() : 'N/A'}</p>
-            <p class="meta">Topics: ${briefingData.topics.join(', ')}</p>
-            ${briefingData.content.replace(/\n/g, '<br>')}
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-    }
-  };
-
   const addTopic = () => {
     if (newTopic.trim() && !settings.focusTopics.includes(newTopic.trim())) {
       setSettings({
@@ -401,10 +366,6 @@ export function Briefing() {
               <div className="flex items-center gap-2">
                 <Badge variant="outline">{briefingData.topics.join(', ')}</Badge>
               </div>
-              <Button variant="outline" size="sm" onClick={downloadPDF}>
-                <Download className="h-4 w-4 mr-2" />
-                {t('downloadPDF')}
-              </Button>
             </div>
             <div className="prose prose-invert max-w-none">
               <MarkdownRenderer content={briefingData.content} />

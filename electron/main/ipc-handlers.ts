@@ -1616,6 +1616,23 @@ function registerFileHandlers(): void {
     }
     return results;
   });
+
+  // Save base64 data to file
+  ipcMain.handle('file:saveBase64', async (_, params: {
+    data: string;
+    filePath: string;
+  }) => {
+    try {
+      const fs = require('fs');
+      const buffer = Buffer.from(params.data, 'base64');
+      fs.writeFileSync(params.filePath, buffer);
+      logger.info('[File] Saved base64 data to:', params.filePath);
+      return { success: true };
+    } catch (error) {
+      logger.error('[File] Failed to save base64 data:', error);
+      return { success: false, error: String(error) };
+    }
+  });
 }
 
 // ── Todo List handlers ──────────────────────────────────────────────
@@ -2309,6 +2326,129 @@ ${searchContext}
 
       return { success: true, path: result.filePaths[0] };
     } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Print HTML to PDF
+  ipcMain.handle('briefing:printToPDF', async (_, params: {
+    html: string;
+    filePath: string;
+  }) => {
+    try {
+      const { BrowserWindow } = require('electron');
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+
+      const pdfWindow = new BrowserWindow({
+        width: 900,
+        height: 1200,
+        show: false,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+        },
+      });
+
+      // Write HTML to temp file
+      const tempHtmlPath = path.join(os.tmpdir(), `briefing_${Date.now()}.html`);
+      fs.writeFileSync(tempHtmlPath, params.html, 'utf8');
+
+      logger.info('[Briefing] Loading HTML from temp file for PDF');
+
+      // Load HTML
+      await pdfWindow.loadFile(tempHtmlPath);
+
+      // Wait for render
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Generate PDF
+      const pdfData = await pdfWindow.webContents.printToPDF({
+        printBackground: true,
+        pageSize: 'A4',
+        margins: { marginType: 'custom', top: 0.5, bottom: 0.5, left: 0.5, right: 0.5 },
+        scale: 1.0,
+      });
+
+      // Save PDF
+      fs.writeFileSync(params.filePath, pdfData);
+
+      // Clean up
+      try { fs.unlinkSync(tempHtmlPath); } catch {}
+      pdfWindow.close();
+
+      logger.info('[Briefing] PDF saved:', params.filePath);
+      return { success: true };
+    } catch (error) {
+      logger.error('[Briefing] PDF generation failed:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Generate PDF from HTML (legacy)
+  ipcMain.handle('briefing:savePDF', async (_, params: {
+    html: string;
+    filePath: string;
+  }) => {
+    try {
+      // Create a hidden BrowserWindow to render the HTML and print to PDF
+      const { BrowserWindow } = require('electron');
+
+      const pdfWindow = new BrowserWindow({
+        width: 900,
+        height: 1200,
+        show: false,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+        },
+      });
+
+      // Write HTML to a temporary file and load from file (more reliable for large content)
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+      const tempHtmlPath = path.join(os.tmpdir(), `briefing_pdf_${Date.now()}.html`);
+
+      // Write HTML to temp file with proper BOM for encoding
+      fs.writeFileSync(tempHtmlPath, '\ufeff' + params.html, 'utf8');
+
+      logger.info('[Briefing] Loading HTML from temp file:', tempHtmlPath);
+
+      // Load HTML from file
+      await pdfWindow.loadFile(tempHtmlPath);
+
+      // Wait for content to fully render
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Generate PDF with better settings
+      const pdfData = await pdfWindow.webContents.printToPDF({
+        printBackground: true,
+        pageSize: 'A4',
+        margins: {
+          marginType: 'custom',
+          top: 0.4,
+          bottom: 0.4,
+          left: 0.4,
+          right: 0.4,
+        },
+        scale: 1.0,
+      });
+
+      // Write PDF to file
+      fs.writeFileSync(params.filePath, pdfData);
+
+      // Clean up temp file
+      fs.unlinkSync(tempHtmlPath);
+
+      // Close the window
+      pdfWindow.close();
+
+      logger.info('[Briefing] PDF saved to:', params.filePath);
+      return { success: true, path: params.filePath };
+    } catch (error) {
+      logger.error('[Briefing] Failed to save PDF:', error);
       return { success: false, error: String(error) };
     }
   });
