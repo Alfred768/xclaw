@@ -12,6 +12,7 @@ import enCron from './locales/en/cron.json';
 import enSetup from './locales/en/setup.json';
 import enTodo from './locales/en/todo.json';
 import enBriefing from './locales/en/briefing.json';
+import enUsage from './locales/en/usage.json';
 
 // ZH
 import zhCommon from './locales/zh/common.json';
@@ -24,6 +25,7 @@ import zhCron from './locales/zh/cron.json';
 import zhSetup from './locales/zh/setup.json';
 import zhTodo from './locales/zh/todo.json';
 import zhBriefing from './locales/zh/briefing.json';
+import zhUsage from './locales/zh/usage.json';
 
 // JA
 import jaCommon from './locales/ja/common.json';
@@ -36,6 +38,7 @@ import jaCron from './locales/ja/cron.json';
 import jaSetup from './locales/ja/setup.json';
 import jaTodo from './locales/ja/todo.json';
 import jaBriefing from './locales/ja/briefing.json';
+import jaUsage from './locales/ja/usage.json';
 
 export const SUPPORTED_LANGUAGES = [
     { code: 'en', label: 'English' },
@@ -57,6 +60,7 @@ const resources = {
         setup: enSetup,
         todo: enTodo,
         briefing: enBriefing,
+        usage: enUsage,
     },
     zh: {
         common: zhCommon,
@@ -69,6 +73,7 @@ const resources = {
         setup: zhSetup,
         todo: zhTodo,
         briefing: zhBriefing,
+        usage: zhUsage,
     },
     ja: {
         common: jaCommon,
@@ -81,6 +86,7 @@ const resources = {
         setup: jaSetup,
         todo: jaTodo,
         briefing: jaBriefing,
+        usage: jaUsage,
     },
 };
 
@@ -91,7 +97,7 @@ i18n
         lng: 'en', // will be overridden by settings store
         fallbackLng: 'en',
         defaultNS: 'common',
-        ns: ['common', 'settings', 'dashboard', 'chat', 'channels', 'skills', 'cron', 'setup', 'todo', 'briefing'],
+        ns: ['common', 'settings', 'dashboard', 'chat', 'channels', 'skills', 'cron', 'setup', 'todo', 'briefing', 'usage'],
         interpolation: {
             escapeValue: false, // React already escapes
         },

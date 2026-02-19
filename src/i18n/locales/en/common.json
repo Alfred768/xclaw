@@ -8,7 +8,8 @@
         "settings": "Settings",
         "devConsole": "Developer Console",
         "todo": "Todo",
-        "briefing": "Briefing"
+        "briefing": "Briefing",
+        "usage": "Usage"
     },
     "actions": {
         "save": "Save",

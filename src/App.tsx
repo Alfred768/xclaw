@@ -18,6 +18,7 @@ import { Settings } from './pages/Settings';
 import { Setup } from './pages/Setup';
 import { Todo } from './pages/Todo';
 import { Briefing } from './pages/Briefing';
+import { Usage } from './pages/Usage';
 import { useSettingsStore } from './stores/settings';
 import { useGatewayStore } from './stores/gateway';
 
@@ -159,6 +160,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/todo" element={<Todo />} />
             <Route path="/briefing" element={<Briefing />} />
+            <Route path="/usage" element={<Usage />} />
             <Route path="/channels" element={<Channels />} />
             <Route path="/skills" element={<Skills />} />
             <Route path="/cron" element={<Cron />} />

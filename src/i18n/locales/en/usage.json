@@ -1,0 +1,28 @@
+{
+  "title": "Token Usage",
+  "subtitle": "Track your LLM token consumption in real-time",
+  "timeRange": {
+    "label": "Time Range",
+    "last7Days": "Last 7 Days",
+    "last30Days": "Last 30 Days",
+    "last90Days": "Last 90 Days",
+    "thisMonth": "This Month",
+    "lastMonth": "Last Month"
+  },
+  "refresh": "Refresh",
+  "clear": "Clear Data",
+  "metrics": {
+    "totalTokens": "Total Tokens",
+    "apiRequests": "API Requests"
+  },
+  "charts": {
+    "tokenUsageOverTime": "Token Usage Over Time",
+    "modelBreakdown": "Model Breakdown"
+  },
+  "table": {
+    "model": "Model",
+    "requests": "Requests",
+    "tokens": "Tokens"
+  },
+  "noData": "No usage data available. Start a chat to see your token usage."
+}

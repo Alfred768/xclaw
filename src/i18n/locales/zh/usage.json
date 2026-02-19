@@ -1,0 +1,28 @@
+{
+  "title": "Token 使用量",
+  "subtitle": "实时追踪您的 LLM Token 消耗",
+  "timeRange": {
+    "label": "时间范围",
+    "last7Days": "最近 7 天",
+    "last30Days": "最近 30 天",
+    "last90Days": "最近 90 天",
+    "thisMonth": "本月",
+    "lastMonth": "上月"
+  },
+  "refresh": "刷新",
+  "clear": "清除数据",
+  "metrics": {
+    "totalTokens": "Token 总数",
+    "apiRequests": "API 请求次数"
+  },
+  "charts": {
+    "tokenUsageOverTime": "Token 使用趋势",
+    "modelBreakdown": "模型使用明细"
+  },
+  "table": {
+    "model": "模型",
+    "requests": "请求数",
+    "tokens": "Token 数"
+  },
+  "noData": "暂无使用数据。开始聊天以查看 Token 使用情况。"
+}

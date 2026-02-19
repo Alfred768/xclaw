@@ -147,6 +147,11 @@ const electronAPI = {
         'openclaw:installCliMac',
         // File operations
         'file:saveBase64',
+        // Usage tracking
+        'usage:getRecords',
+        'usage:getAllRecords',
+        'usage:clear',
+        'usage:getCurrentModel',
       ];
 
       if (validChannels.includes(channel)) {
