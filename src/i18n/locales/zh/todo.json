@@ -13,5 +13,8 @@
     "pendingTasks": "待完成",
     "completedTasks": "已完成",
     "created": "创建于",
-    "updated": "更新于"
+    "updated": "更新于",
+    "dropFile": "拖放文件到此处提取待办事项",
+    "dropFileDesc": "支持 .txt, .md, .pdf 等文本文件",
+    "extracting": "正在从文件中提取待办事项..."
 }

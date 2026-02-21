@@ -13,5 +13,8 @@
     "pendingTasks": "Pending",
     "completedTasks": "Completed",
     "created": "Created",
-    "updated": "Updated"
+    "updated": "Updated",
+    "dropFile": "Drop file here to extract todos",
+    "dropFileDesc": "Supports .txt, .md, .pdf and other text files",
+    "extracting": "Extracting todos from file..."
 }

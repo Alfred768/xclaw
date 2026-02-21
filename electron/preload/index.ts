@@ -129,6 +129,8 @@ const electronAPI = {
         'todo:delete',
         'todo:toggle',
         'todo:getStoragePath',
+        'todo:extractFromContent',
+        'todo:extractFromPdf',
         // Briefing (Daily AI Briefing)
         'briefing:getSettings',
         'briefing:saveSettings',

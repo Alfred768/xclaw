@@ -11,6 +11,13 @@
         "briefing": "ブリーフィング",
         "usage": "使用分析"
     },
+    "nav": {
+        "chat": "チャット",
+        "home": "ホーム",
+        "todo": "Todo",
+        "usage": "分析",
+        "settings": "設定"
+    },
     "actions": {
         "save": "保存",
         "cancel": "キャンセル",

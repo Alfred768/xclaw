@@ -3,24 +3,36 @@
  * Handles routing and global providers
  */
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Component, useEffect } from 'react';
+import { Component, useEffect, Suspense, lazy } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import { Toaster } from 'sonner';
 import i18n from './i18n';
 import { MainLayout } from './components/layout/MainLayout';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Dashboard } from './pages/Dashboard';
-import { Chat } from './pages/Chat';
-import { Channels } from './pages/Channels';
-import { Skills } from './pages/Skills';
-import { Cron } from './pages/Cron';
-import { Settings } from './pages/Settings';
-import { Setup } from './pages/Setup';
-import { Todo } from './pages/Todo';
-import { Briefing } from './pages/Briefing';
-import { Usage } from './pages/Usage';
 import { useSettingsStore } from './stores/settings';
 import { useGatewayStore } from './stores/gateway';
+import { LoadingSpinner } from './components/common/LoadingSpinner';
+
+// Lazy load pages for code splitting
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Chat = lazy(() => import('./pages/Chat'));
+const Channels = lazy(() => import('./pages/Channels'));
+const Skills = lazy(() => import('./pages/Skills'));
+const Cron = lazy(() => import('./pages/Cron'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Setup = lazy(() => import('./pages/Setup'));
+const Todo = lazy(() => import('./pages/Todo'));
+const Briefing = lazy(() => import('./pages/Briefing'));
+const Usage = lazy(() => import('./pages/Usage'));
+
+// Page loader component for Suspense fallback
+function PageLoader() {
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <LoadingSpinner size="lg" />
+    </div>
+  );
+}
 
 
 /**
@@ -150,23 +162,25 @@ function App() {
   return (
     <ErrorBoundary>
       <TooltipProvider delayDuration={300}>
-        <Routes>
-          {/* Setup wizard (shown on first launch) */}
-          <Route path="/setup/*" element={<Setup />} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Setup wizard (shown on first launch) */}
+            <Route path="/setup/*" element={<Setup />} />
 
-          {/* Main application routes */}
-          <Route element={<MainLayout />}>
-            <Route path="/" element={<Chat />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/todo" element={<Todo />} />
-            <Route path="/briefing" element={<Briefing />} />
-            <Route path="/usage" element={<Usage />} />
-            <Route path="/channels" element={<Channels />} />
-            <Route path="/skills" element={<Skills />} />
-            <Route path="/cron" element={<Cron />} />
-            <Route path="/settings/*" element={<Settings />} />
-          </Route>
-        </Routes>
+            {/* Main application routes */}
+            <Route element={<MainLayout />}>
+              <Route path="/" element={<Chat />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/todo" element={<Todo />} />
+              <Route path="/briefing" element={<Briefing />} />
+              <Route path="/usage" element={<Usage />} />
+              <Route path="/channels" element={<Channels />} />
+              <Route path="/skills" element={<Skills />} />
+              <Route path="/cron" element={<Cron />} />
+              <Route path="/settings/*" element={<Settings />} />
+            </Route>
+          </Routes>
+        </Suspense>
 
         {/* Global toast notifications */}
         <Toaster

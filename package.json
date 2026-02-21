@@ -18,6 +18,7 @@
     "private": true,
     "scripts": {
         "init": "pnpm install && pnpm run uv:download",
+        "postinstall": "node scripts/install-python-deps.mjs",
         "dev": "vite",
         "build": "vite build && zx scripts/bundle-openclaw.mjs && electron-builder",
         "build:vite": "vite build",

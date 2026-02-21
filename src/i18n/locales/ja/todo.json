@@ -13,5 +13,8 @@
     "pendingTasks": "未完了",
     "completedTasks": "完了",
     "created": "作成日",
-    "updated": "更新日"
+    "updated": "更新日",
+    "dropFile": "ファイルをドロップしてTodoを抽出",
+    "dropFileDesc": ".txt, .md, .pdf などのテキストファイルに対応",
+    "extracting": "ファイルからTodoを抽出中..."
 }

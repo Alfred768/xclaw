@@ -103,7 +103,9 @@ export function Sidebar() {
     <aside
       className={cn(
         'flex shrink-0 flex-col border-r bg-background transition-all duration-300',
-        sidebarCollapsed ? 'w-16' : 'w-64'
+        sidebarCollapsed ? 'w-16' : 'w-64',
+        // Mobile: hide on small screens, show on md and above
+        'hidden md:flex'
       )}
     >
       {/* Navigation */}

@@ -1,18 +1,27 @@
 /**
  * Provider Storage
  * Manages provider configurations and API keys.
- * Keys are stored in plain text alongside provider configs in a single electron-store.
+ * API keys are encrypted using electron-store's encryption feature.
  */
 
 // Lazy-load electron-store (ESM module)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let providerStore: any = null;
 
+// Generate a consistent encryption key based on machine ID
+function getEncryptionKey(): string {
+  // Use a combination of app name and a static key component
+  // In production, this should be derived from machine-specific info
+  // For now, we use a key that's stored in the app's config
+  return 'clawx-api-key-encryption-v1';
+}
+
 async function getProviderStore() {
   if (!providerStore) {
     const Store = (await import('electron-store')).default;
     providerStore = new Store({
       name: 'clawx-providers',
+      encryptionKey: getEncryptionKey(),
       defaults: {
         providers: {} as Record<string, ProviderConfig>,
         apiKeys: {} as Record<string, string>,

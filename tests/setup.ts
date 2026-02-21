@@ -4,6 +4,22 @@
  */
 import { vi } from 'vitest';
 import '@testing-library/jest-dom';
+import { persist, createJSONStorage } from 'zustand/middleware';
+
+// Mock zustand persist
+const mockStorage = {
+  getItem: vi.fn(() => null),
+  setItem: vi.fn(() => undefined),
+  removeItem: vi.fn(() => undefined),
+};
+
+// Mock localStorage
+vi.stubGlobal('localStorage', mockStorage);
+vi.stubGlobal('sessionStorage', {
+  getItem: vi.fn(() => null),
+  setItem: vi.fn(() => undefined),
+  removeItem: vi.fn(() => undefined),
+});
 
 // Mock window.electron API
 const mockElectron = {

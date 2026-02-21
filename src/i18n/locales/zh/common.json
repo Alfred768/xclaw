@@ -11,6 +11,13 @@
         "briefing": "每日简报",
         "usage": "使用分析"
     },
+    "nav": {
+        "chat": "聊天",
+        "home": "首页",
+        "todo": "待办",
+        "usage": "统计",
+        "settings": "设置"
+    },
     "actions": {
         "save": "保存",
         "cancel": "取消",

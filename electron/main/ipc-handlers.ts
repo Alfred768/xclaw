@@ -4,7 +4,7 @@
  */
 import { ipcMain, BrowserWindow, shell, dialog, app, nativeImage } from 'electron';
 import { existsSync, copyFileSync, statSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join, extname, basename } from 'node:path';
 import crypto from 'node:crypto';
 // Using native fetch from Node.js 18+
@@ -48,7 +48,6 @@ import { updateSkillConfig, getSkillConfig, getAllSkillConfigs } from '../utils/
 import { whatsAppLoginManager } from '../utils/whatsapp-login';
 import { getProviderConfig } from '../utils/provider-registry';
 import { loadUsageRecords, getUsageStats, clearUsageRecords, addUsageRecord } from '../utils/usage-storage';
-import { getDefaultProvider, getProvider } from '../utils/secure-storage';
 import { getProviderDefaultModel } from '../utils/provider-registry';
 
 /**
@@ -102,7 +101,7 @@ export function registerIpcHandlers(
   registerFileHandlers();
 
   // Todo handlers (local JSON storage for todo list)
-  registerTodoHandlers();
+  registerTodoHandlers(gatewayManager);
 
   // Briefing handlers (Daily AI Briefing)
   registerBriefingHandlers(gatewayManager);
@@ -113,11 +112,21 @@ export function registerIpcHandlers(
   // Session handlers (delete session by key)
   ipcMain.handle('session:delete', async (_, sessionKey: string) => {
     try {
+      // Validate sessionKey format (alphanumeric, colon, underscore, hyphen only)
+      if (!/^[a-zA-Z0-9:_.-]+$/.test(sessionKey)) {
+        return { success: false, error: 'Invalid session key format' };
+      }
+
       const sessionsDir = join(homedir(), '.openclaw', 'agents', 'main', 'sessions');
       const sessionsFile = join(sessionsDir, 'sessions.json');
 
       // Read sessions.json
       const sessionsData = JSON.parse(readFileSync(sessionsFile, 'utf-8'));
+
+      // Validate sessionKey exists in data (prevent prototype pollution)
+      if (!Object.prototype.hasOwnProperty.call(sessionsData, sessionKey)) {
+        return { success: false, error: 'Session not found' };
+      }
 
       // Find the session
       const session = sessionsData[sessionKey];
@@ -125,15 +134,21 @@ export function registerIpcHandlers(
         return { success: false, error: 'Session not found' };
       }
 
-      // Delete the .jsonl file
+      // Delete the .jsonl file (with path validation)
       if (session.sessionFile) {
         const sessionFilePath = session.sessionFile;
-        if (existsSync(sessionFilePath)) {
-          unlinkSync(sessionFilePath);
+        // Validate path is within sessions directory (prevent path traversal)
+        const resolvedPath = join(sessionsDir, sessionFilePath);
+        if (!resolvedPath.startsWith(sessionsDir)) {
+          logger.error('[Session] Invalid session file path:', sessionFilePath);
+          return { success: false, error: 'Invalid session file path' };
+        }
+        if (existsSync(resolvedPath)) {
+          unlinkSync(resolvedPath);
         }
       }
 
-      // Remove from sessions.json
+      // Remove from sessions.json (safe delete using Object.hasOwn)
       delete sessionsData[sessionKey];
       writeFileSync(sessionsFile, JSON.stringify(sessionsData, null, 2));
 
@@ -461,8 +476,32 @@ function registerGatewayHandlers(
     }
   });
 
-  // Gateway RPC call
+  // Gateway RPC call (with method whitelist)
+  const ALLOWED_GATEWAY_METHODS = [
+    'chat.send',
+    'chat.history',
+    'chat.abort',
+    'chat.sessions',
+    'chat.delete',
+    'agent.run',
+    'agent.status',
+    'agent.abort',
+    'agent.list',
+    'browser.search',
+    'browser.scrape',
+    'files.read',
+    'files.write',
+    'tools.list',
+    'tools.call',
+  ];
+
   ipcMain.handle('gateway:rpc', async (_, method: string, params?: unknown, timeoutMs?: number) => {
+    // Validate method is in whitelist
+    if (!ALLOWED_GATEWAY_METHODS.includes(method)) {
+      logger.warn(`[Gateway] Blocked RPC call with unauthorized method: ${method}`);
+      return { success: false, error: `Method '${method}' is not allowed. Allowed methods: ${ALLOWED_GATEWAY_METHODS.join(', ')}` };
+    }
+
     try {
       const result = await gatewayManager.rpc(method, params, timeoutMs);
       return { success: true, result };
@@ -1428,9 +1467,24 @@ async function validateOpenRouterKey(
  * Shell-related IPC handlers
  */
 function registerShellHandlers(): void {
-  // Open external URL
+  // Open external URL (with URL validation)
   ipcMain.handle('shell:openExternal', async (_, url: string) => {
-    await shell.openExternal(url);
+    try {
+      // Validate URL
+      const parsedUrl = new URL(url);
+
+      // Only allow http, https, and mailto protocols
+      const allowedProtocols = ['https:', 'http:', 'mailto:'];
+      if (!allowedProtocols.includes(parsedUrl.protocol)) {
+        throw new Error(`Protocol '${parsedUrl.protocol}' is not allowed. Only http, https, and mailto are supported.`);
+      }
+
+      await shell.openExternal(url);
+      return { success: true };
+    } catch (error) {
+      logger.error('[Shell] openExternal error:', error);
+      return { success: false, error: String(error) };
+    }
   });
 
   // Open path in file explorer
@@ -1674,10 +1728,38 @@ function generateImagePreview(filePath: string, mimeType: string): string | null
 function registerFileHandlers(): void {
   // Stage files from real disk paths (used with dialog:open)
   ipcMain.handle('file:stage', async (_, filePaths: string[]) => {
+    // Validate input
+    if (!Array.isArray(filePaths) || filePaths.length === 0) {
+      return { success: false, error: 'Invalid file paths' };
+    }
+
     mkdirSync(OUTBOUND_DIR, { recursive: true });
 
     const results = [];
     for (const filePath of filePaths) {
+      // Validate filePath is a string
+      if (typeof filePath !== 'string' || !filePath) {
+        continue;
+      }
+
+      // Validate file exists
+      if (!existsSync(filePath)) {
+        logger.warn('[File] Source file not found:', filePath);
+        continue;
+      }
+
+      // Validate the source file is in a safe directory (user's home or temp)
+      const normalizedPath = join(filePath);
+      const userHome = homedir();
+      const tempDir = tmpdir();
+      const isInHome = normalizedPath.startsWith(userHome);
+      const isInTemp = normalizedPath.startsWith(tempDir);
+
+      if (!isInHome && !isInTemp) {
+        logger.warn('[File] File must be in home or temp directory:', filePath);
+        continue;
+      }
+
       const id = crypto.randomUUID();
       const ext = extname(filePath);
       const stagedPath = join(OUTBOUND_DIR, `${id}${ext}`);
@@ -1752,9 +1834,8 @@ function registerFileHandlers(): void {
     filePath: string;
   }) => {
     try {
-      const fs = require('fs');
       const buffer = Buffer.from(params.data, 'base64');
-      fs.writeFileSync(params.filePath, buffer);
+      writeFileSync(params.filePath, buffer);
       logger.info('[File] Saved base64 data to:', params.filePath);
       return { success: true };
     } catch (error) {
@@ -1824,7 +1905,7 @@ function writeTodoStorage(storage: TodoStorage): void {
 /**
  * Register Todo IPC handlers
  */
-function registerTodoHandlers(): void {
+function registerTodoHandlers(gatewayManager: GatewayManager): void {
   // Get all todo items
   ipcMain.handle('todo:getAll', async () => {
     try {
@@ -1935,6 +2016,177 @@ function registerTodoHandlers(): void {
   // Get todo storage path (for debugging)
   ipcMain.handle('todo:getStoragePath', async () => {
     return TODO_STORAGE_PATH;
+  });
+
+  // Extract todo items from file content
+  ipcMain.handle('todo:extractFromContent', async (_, content: string) => {
+    try {
+      // Extract todo items using regex patterns
+      const todoItems: string[] = [];
+
+      // Pattern 1: Markdown checkbox format: - [ ] or - [x]
+      const markdownPattern = /[-*]\s*\[([ xX])\]\s*(.+)/g;
+      let match;
+      while ((match = markdownPattern.exec(content)) !== null) {
+        const item = match[2].trim();
+        if (item && !todoItems.includes(item)) {
+          todoItems.push(item);
+        }
+      }
+
+      // Pattern 2: Numbered list: 1. Task, 2. Task
+      const numberedPattern = /^\d+\.\s*(.+)$/gm;
+      while ((match = numberedPattern.exec(content)) !== null) {
+        const item = match[1].trim();
+        if (item && !todoItems.includes(item)) {
+          todoItems.push(item);
+        }
+      }
+
+      // Pattern 3: TODO: or - TODO: format
+      const todoFormatPattern = /(?:^|\n)\s*(?:TODO:|- TODO:)\s*(.+)/gim;
+      while ((match = todoFormatPattern.exec(content)) !== null) {
+        const item = match[1].trim();
+        if (item && !todoItems.includes(item)) {
+          todoItems.push(item);
+        }
+      }
+
+      // Pattern 4: Plain text lines that look like tasks
+      const lines = content.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        // Skip empty lines and lines that are too long
+        if (!trimmed || trimmed.length > 200) continue;
+        // Skip lines that are headers or already captured
+        if (/^#{1,3}\s/.test(trimmed)) continue;
+        if (todoItems.includes(trimmed)) continue;
+        // Check if it looks like a task (starts with verb or short phrase)
+        if (/^(?:buy|cook|clean|write|send|call|fix|update|check|review|create|add|remove|complete|finish|start|do|make|get|prepare|organize|schedule|plan|review|verify|test|deploy|build|read|learn)/i.test(trimmed)) {
+          todoItems.push(trimmed);
+        }
+      }
+
+      return { success: true, items: todoItems };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Extract todo items from PDF file using Gateway (LLM)
+  ipcMain.handle('todo:extractFromPdf', async (_, filePath: string) => {
+    try {
+      // Read PDF file
+      if (!existsSync(filePath)) {
+        return { success: false, error: 'File not found' };
+      }
+
+      // Extract text from PDF using PyPDF2
+      const { execSync } = await import('node:child_process');
+      let pdfText = '';
+      try {
+        // Write Python script to temp file and execute
+        const tempScript = join(tmpdir(), `extract_pdf_${Date.now()}.py`);
+        const pythonScript = `
+import PyPDF2
+import sys
+
+def extract_text_from_pdf(pdf_path):
+    try:
+        with open(pdf_path, 'rb') as file:
+            reader = PyPDF2.PdfReader(file)
+            text = ''
+            for page in reader.pages:
+                text += page.extract_text() + '\\n'
+            return text
+    except Exception as e:
+        return str(e)
+
+pdf_path = '${filePath.replace(/'/g, "'\\''")}'
+print(extract_text_from_pdf(pdf_path))
+`;
+        writeFileSync(tempScript, pythonScript);
+        pdfText = execSync(`python3 "${tempScript}"`, { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
+        // Clean up temp file
+        unlinkSync(tempScript);
+        logger.info('[Todo] PDF text extracted, length:', pdfText.length);
+      } catch (e) {
+        logger.error('[Todo] Failed to extract PDF text:', e);
+        return { success: false, error: 'Failed to extract text from PDF' };
+      }
+
+      // Truncate if too long
+      const maxTextLength = 50000;
+      const truncatedText = pdfText.length > maxTextLength
+        ? pdfText.substring(0, maxTextLength) + '\n\n[...内容已截断...]'
+        : pdfText;
+
+      const fileName = basename(filePath);
+      const prompt = `请从以下PDF文件 "${fileName}" 的文本内容中提取所有待办事项/行动项，并以以下JSON格式返回：
+[TODO_LIST:["item1", "item2", "item3"]]
+
+只返回JSON格式，不要有其他内容。如果文件中没有明确的待办事项，请返回空列表 [TODO_LIST:[]]。
+
+PDF文本内容：
+${truncatedText}`;
+
+      // Use a fixed session key to reuse the same OpenClaw process
+      const sessionKey = 'agent:main:translate-todo';
+
+      // Call Gateway to extract todos from PDF text
+      const sendResult = await gatewayManager.rpc<{ runId?: string }>('chat.send', {
+        sessionKey,
+        message: prompt,
+        deliver: false,
+        idempotencyKey: `todo-extract-${Date.now()}`,
+      }, 120000);
+
+      logger.info('[Todo] PDF extract send result:', JSON.stringify(sendResult));
+
+      const runId = sendResult?.runId;
+      if (!runId) {
+        return { success: false, error: 'Failed to start extraction' };
+      }
+
+      // Wait for the run to complete and get chat history
+      const maxRetries = 40; // 40 * 3000ms = 120 seconds timeout
+      const retryDelay = 3000;
+
+      for (let i = 0; i < maxRetries; i++) {
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+
+        try {
+          const historyResult = await gatewayManager.rpc<{ sessions?: Record<string, unknown> }>('chat.history', { sessionKey, limit: 5 });
+
+          const sessions = historyResult?.sessions as Record<string, unknown> | undefined;
+          const sessionData = sessions?.[sessionKey] as { messages?: Array<{ role: string; content?: unknown }> } | undefined;
+          const messages = sessionData?.messages || [];
+
+          // Find the last assistant message
+          const lastAssistantMsg = messages.filter((m: { role: string }) => m.role === 'assistant').pop();
+
+          if (lastAssistantMsg?.content) {
+            const contentStr = typeof lastAssistantMsg.content === 'string'
+              ? lastAssistantMsg.content
+              : JSON.stringify(lastAssistantMsg.content);
+
+            // Extract todo list from response
+            const todoMatch = contentStr.match(/\[TODO_LIST:(\[[\s\S]*?\])\]/);
+            if (todoMatch) {
+              const todoItems = JSON.parse(todoMatch[1]);
+              return { success: true, items: todoItems };
+            }
+          }
+        } catch {
+          // Continue polling
+        }
+      }
+
+      return { success: false, error: 'Timeout waiting for extraction result' };
+    } catch (error) {
+      logger.error('[Todo] PDF extraction error:', error);
+      return { success: false, error: String(error) };
+    }
   });
 }
 
@@ -2465,11 +2717,6 @@ ${searchContext}
     filePath: string;
   }) => {
     try {
-      const { BrowserWindow } = require('electron');
-      const fs = require('fs');
-      const path = require('path');
-      const os = require('os');
-
       const pdfWindow = new BrowserWindow({
         width: 900,
         height: 1200,
@@ -2481,8 +2728,8 @@ ${searchContext}
       });
 
       // Write HTML to temp file
-      const tempHtmlPath = path.join(os.tmpdir(), `briefing_${Date.now()}.html`);
-      fs.writeFileSync(tempHtmlPath, params.html, 'utf8');
+      const tempHtmlPath = join(tmpdir(), `briefing_${Date.now()}.html`);
+      writeFileSync(tempHtmlPath, params.html, 'utf8');
 
       logger.info('[Briefing] Loading HTML from temp file for PDF');
 
@@ -2501,10 +2748,11 @@ ${searchContext}
       });
 
       // Save PDF
-      fs.writeFileSync(params.filePath, pdfData);
+      writeFileSync(params.filePath, pdfData);
 
       // Clean up
-      try { fs.unlinkSync(tempHtmlPath); } catch {}
+      // eslint-disable-next-line no-empty
+      try { unlinkSync(tempHtmlPath); } catch {}
       pdfWindow.close();
 
       logger.info('[Briefing] PDF saved:', params.filePath);
@@ -2522,8 +2770,6 @@ ${searchContext}
   }) => {
     try {
       // Create a hidden BrowserWindow to render the HTML and print to PDF
-      const { BrowserWindow } = require('electron');
-
       const pdfWindow = new BrowserWindow({
         width: 900,
         height: 1200,
@@ -2535,13 +2781,10 @@ ${searchContext}
       });
 
       // Write HTML to a temporary file and load from file (more reliable for large content)
-      const fs = require('fs');
-      const path = require('path');
-      const os = require('os');
-      const tempHtmlPath = path.join(os.tmpdir(), `briefing_pdf_${Date.now()}.html`);
+      const tempHtmlPath = join(tmpdir(), `briefing_pdf_${Date.now()}.html`);
 
       // Write HTML to temp file with proper BOM for encoding
-      fs.writeFileSync(tempHtmlPath, '\ufeff' + params.html, 'utf8');
+      writeFileSync(tempHtmlPath, '\ufeff' + params.html, 'utf8');
 
       logger.info('[Briefing] Loading HTML from temp file:', tempHtmlPath);
 
@@ -2566,10 +2809,10 @@ ${searchContext}
       });
 
       // Write PDF to file
-      fs.writeFileSync(params.filePath, pdfData);
+      writeFileSync(params.filePath, pdfData);
 
       // Clean up temp file
-      fs.unlinkSync(tempHtmlPath);
+      unlinkSync(tempHtmlPath);
 
       // Close the window
       pdfWindow.close();
@@ -2724,7 +2967,8 @@ ${searchContext}
       // Use fixed session for scheduler
       const sessionKey = 'agent:main:briefing';
 
-      const sendResult = await gm.rpc('chat.send', {
+      // Send message and wait for response
+      await gm.rpc('chat.send', {
         sessionKey,
         message: prompt,
         deliver: false,
@@ -2738,7 +2982,7 @@ ${searchContext}
       for (let i = 0; i < 20; i++) {
         await new Promise(resolve => setTimeout(resolve, 3000));
 
-        const historyResult = await gm.rpc('chat.history', { sessionKey, limit: 50 });
+        const historyResult = await gm.rpc<{ messages: Array<{ role: string; content: unknown; timestamp?: number }> }>('chat.history', { sessionKey, limit: 50 });
 
         if (historyResult && historyResult.messages && historyResult.messages.length > 0) {
           const messages = historyResult.messages as Array<{ role: string; content: unknown; timestamp?: number }>;

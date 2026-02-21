@@ -124,13 +124,76 @@ function containsTodoKeyword(text: string): boolean {
  * Parse todo items from LLM response
  * Looks for the [TODO_LIST:...] pattern or any JSON array
  */
-function parseTodoItemsFromResponse(content: string): string[] {
+export function parseTodoItemsFromResponse(content: string): string[] {
   console.log('[SmartTodo] Content length:', content.length);
   console.log('[SmartTodo] Content preview:', content.substring(0, 200));
+
+  // Try to parse {"type":"text","text":"... [TODO_LIST:...] ..."} format
+  try {
+    const outerObj = JSON.parse(content);
+    if (outerObj && outerObj.type === 'text' && typeof outerObj.text === 'string') {
+      console.log('[SmartTodo] Found nested text format, extracting...');
+      const textContent = outerObj.text;
+
+      // Try to find [TODO_LIST:...] in the text content
+      const todoMatch = textContent.match(/\[TODO_LIST:(\[[\s\S]*?\])\]/);
+      if (todoMatch && todoMatch[1]) {
+        try {
+          const items = JSON.parse(todoMatch[1]);
+          if (Array.isArray(items)) {
+            const filtered = items.filter((item): item is string => typeof item === 'string' && Boolean(item.trim()));
+            if (filtered.length > 0) {
+              console.log('[SmartTodo] Parsed from nested text:', filtered);
+              return filtered;
+            }
+          }
+        } catch (e) {
+          console.log('[SmartTodo] Nested TODO_LIST parse failed:', e);
+        }
+      }
+
+      // Also try {"TODO_LIST": [...]} format in text
+      const jsonObjMatch = textContent.match(/\{[\s\S]*?"TODO_LIST"\s*:\s*(\[[\s\S]*?\])\s*\}[\s\S]*/);
+      if (jsonObjMatch && jsonObjMatch[1]) {
+        try {
+          const items = JSON.parse(jsonObjMatch[1]);
+          if (Array.isArray(items)) {
+            const filtered = items.filter((item): item is string => typeof item === 'string' && Boolean(item.trim()));
+            if (filtered.length > 0) {
+              console.log('[SmartTodo] Parsed from nested JSON object:', filtered);
+              return filtered;
+            }
+          }
+        } catch (e) {
+          console.log('[SmartTodo] Nested JSON object parse failed:', e);
+        }
+      }
+    }
+  } catch (e) {
+    // Not a JSON object, continue with other parsing methods
+  }
 
   // Try to match [TODO_LIST:...] pattern - use greedy matching
   const match = content.match(/\[TODO_LIST:(\[[\s\S]*?\])\]/);
   if (match && match[1]) {
+    // Try to match {"TODO_LIST": [...]} format
+    const jsonObjMatch = content.match(/\{[\s\S]*?"TODO_LIST"\s*:\s*(\[[\s\S]*?\])\s*\}[\s\S]*/);
+    if (jsonObjMatch && jsonObjMatch[1]) {
+      console.log('[SmartTodo] Found JSON object format');
+      try {
+        const items = JSON.parse(jsonObjMatch[1]);
+        if (Array.isArray(items)) {
+          const filtered = items.filter((item): item is string => typeof item === 'string' && Boolean(item.trim()));
+          if (filtered.length > 0) {
+            console.log('[SmartTodo] Parsed from JSON object:', filtered);
+            return filtered;
+          }
+        }
+      } catch (e) {
+        console.log('[SmartTodo] JSON object parse failed:', e);
+      }
+    }
+
     const rawMatch = match[1];
     console.log('[SmartTodo] Found TODO_LIST raw match:', rawMatch.substring(0, 200));
 
@@ -143,7 +206,20 @@ function parseTodoItemsFromResponse(content: string): string[] {
 
       const items = JSON.parse(unescaped);
       if (Array.isArray(items)) {
-        const filtered = items.filter((item): boolean => typeof item === 'string' && Boolean(item.trim()));
+        // Support both string items and thinking blocks
+        const filtered = items.filter((item): boolean => {
+          if (typeof item === 'string' && Boolean(item.trim())) return true;
+          // Support thinking blocks: { type: 'thinking', thinking: '...' }
+          if (typeof item === 'object' && item !== null && 'thinking' in item) {
+            const thinkingItem = item as { thinking: string };
+            return Boolean(thinkingItem.thinking?.trim());
+          }
+          return false;
+        }).map((item) => {
+          if (typeof item === 'string') return item;
+          // Extract thinking content from thinking blocks
+          return (item as { thinking: string }).thinking;
+        });
         console.log('[SmartTodo] Parsed items:', filtered);
         return filtered;
       }
@@ -153,7 +229,18 @@ function parseTodoItemsFromResponse(content: string): string[] {
       try {
         const items = JSON.parse(rawMatch);
         if (Array.isArray(items)) {
-          const filtered = items.filter((item): boolean => typeof item === 'string' && Boolean(item.trim()));
+          const filtered = items.filter((item): boolean => {
+            if (typeof item === 'string' && Boolean(item.trim())) return true;
+            // Support thinking blocks
+            if (typeof item === 'object' && item !== null && 'thinking' in item) {
+              const thinkingItem = item as { thinking: string };
+              return Boolean(thinkingItem.thinking?.trim());
+            }
+            return false;
+          }).map((item) => {
+            if (typeof item === 'string') return item;
+            return (item as { thinking: string }).thinking;
+          });
           console.log('[SmartTodo] Direct parse worked, items:', filtered);
           return filtered;
         }
@@ -170,6 +257,16 @@ function parseTodoItemsFromResponse(content: string): string[] {
     console.log('[SmartTodo] JSON arrays preview:', jsonMatch.map(m => m.substring(0, 80)));
 
     for (const m of jsonMatch) {
+      // Skip thinking blocks: [{ "type": "thinking", "thinking": "..." }]
+      const trimmed = m.trim();
+      if (
+        trimmed.startsWith('[{"type":"thinking"') ||
+        trimmed.startsWith('[{"type":"thinking')
+      ) {
+        console.log('[SmartTodo] Skipping thinking block array');
+        continue;
+      }
+
       // Skip very small arrays (less than 10 chars)
       if (m.length < 10) continue;
 
@@ -181,16 +278,51 @@ function parseTodoItemsFromResponse(content: string): string[] {
 
         if (Array.isArray(items) && items.length >= 1) {
           // Check if items are strings (lenient: allow any length)
-          const stringItems = items.filter((item): boolean => typeof item === 'string' && Boolean(item.trim()));
-          console.log('[SmartTodo] String items:', stringItems);
+          // Also support thinking blocks: { type: 'thinking', thinking: '...' }
+          const filtered = items.filter((item): boolean => {
+            if (typeof item === 'string' && Boolean(item.trim())) return true;
+            // Support thinking blocks
+            if (typeof item === 'object' && item !== null && 'thinking' in item) {
+              const thinkingItem = item as { thinking: string };
+              return Boolean(thinkingItem.thinking?.trim());
+            }
+            return false;
+          }).map((item) => {
+            if (typeof item === 'string') return item;
+            // Extract thinking content from thinking blocks
+            return (item as { thinking: string }).thinking;
+          });
+          console.log('[SmartTodo] String items:', filtered);
 
-          if (stringItems.length > 0) {
-            console.log('[SmartTodo] Fallback parsed items:', stringItems);
-            return stringItems;
+          if (filtered.length > 0) {
+            console.log('[SmartTodo] Fallback parsed items:', filtered);
+            return filtered;
           }
         }
       } catch (e) {
         console.log('[SmartTodo] Parse failed:', e);
+        // Try to match markdown todo format: [ ] Task name or [x] Task name
+        const todoMatch = m.match(/\[([ xX]?)\s*\]\s*(.+)/);
+        if (todoMatch) {
+          console.log('[SmartTodo] Found markdown todo:', todoMatch[2]);
+          return [todoMatch[2].trim()];
+        }
+      }
+    }
+
+    // If no valid JSON arrays found, try to match markdown todo items directly
+    const markdownTodos = content.match(/(?:^|\n)\s*[-*]\s*\[\s*([ xX])\s*\]\s*(.+)/g);
+    if (markdownTodos) {
+      const items = markdownTodos
+        .map((line) => {
+          const match = line.match(/\[([ xX]?)\s*\]\s*(.+)/);
+          return match ? match[2].trim() : null;
+        })
+        .filter((item): item is string => item !== null && item.length > 0);
+
+      if (items.length > 0) {
+        console.log('[SmartTodo] Found markdown todos:', items);
+        return items;
       }
     }
   }
@@ -874,9 +1006,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (isTodoRequest) {
       const userLang = useSettingsStore.getState().language;
       const langInstructions: Record<string, string> = {
-        zh: '请用简体中文回答，并确保待办事项列表也用中文输出。',
-        ja: '日本語で回答してください。',
-        en: '',
+        zh: '请用简体中文回答。请按以下格式返回待办事项列表，只返回这一种格式，不要有其他内容：\n[TODO_LIST:["待办项1", "待办项2", "待办项3"]]',
+        ja: '日本語で回答してください。以下の形式でToDoリストを返してください（他の内容は返さない）：\n[TODO_LIST:["タスク1", "タスク2", "タスク3"]]',
+        en: 'Please respond in English. Return todo items in ONLY this format (no other content):\n[TODO_LIST:["todo1", "todo2", "todo3"]]',
       };
       todoLanguageInstruction = langInstructions[userLang] || '';
       console.log('[SmartTodo] User language:', userLang, 'Instruction:', todoLanguageInstruction);
