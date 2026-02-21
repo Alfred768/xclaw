@@ -3,7 +3,7 @@
  * Registers all IPC handlers for main-renderer communication
  */
 import { ipcMain, BrowserWindow, shell, dialog, app, nativeImage } from 'electron';
-import { existsSync, copyFileSync, statSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, copyFileSync, statSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, extname, basename } from 'node:path';
 import crypto from 'node:crypto';
@@ -109,6 +109,26 @@ export function registerIpcHandlers(
 
   // Usage handlers
   registerUsageHandlers();
+
+  // Session handlers (delete session files)
+  ipcMain.handle('session:delete', async () => {
+    try {
+      const sessionsDir = join(homedir(), '.openclaw', 'agents', 'main', 'sessions');
+      if (!existsSync(sessionsDir)) {
+        return { success: true };
+      }
+      const files = readdirSync(sessionsDir);
+      const jsonlFiles = files.filter((f) => f.endsWith('.jsonl'));
+      for (const file of jsonlFiles) {
+        const filePath = join(sessionsDir, file);
+        unlinkSync(filePath);
+      }
+      return { success: true };
+    } catch (error) {
+      logger.error('Failed to delete session files:', error);
+      return { success: false, error: String(error) };
+    }
+  });
 }
 
 /**

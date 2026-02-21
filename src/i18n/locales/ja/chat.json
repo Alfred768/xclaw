@@ -12,6 +12,7 @@
     "noLogs": "（ログはまだありません）",
     "toolbar": {
         "newSession": "新しいセッション",
+        "deleteSession": "セッションを削除",
         "refresh": "チャットを更新",
         "showThinking": "思考を表示",
         "hideThinking": "思考を非表示"

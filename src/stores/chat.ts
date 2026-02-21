@@ -89,6 +89,7 @@ interface ChatState {
   loadSessions: () => Promise<void>;
   switchSession: (key: string) => void;
   newSession: () => void;
+  deleteSession: (key: string) => Promise<void>;
   loadHistory: () => Promise<void>;
   sendMessage: (text: string, attachments?: Array<{ fileName: string; mimeType: string; fileSize: number; stagedPath: string; preview: string | null }>) => Promise<void>;
   abortRun: () => Promise<void>;
@@ -777,6 +778,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
       pendingFinal: false,
       lastUserMessageAt: null,
     }));
+  },
+
+  // ── Delete session ──
+
+  deleteSession: async (key: string) => {
+    try {
+      // Call backend to delete session files
+      await window.electron.ipcRenderer.invoke('session:delete');
+    } catch (err) {
+      console.warn('Failed to delete session files:', err);
+    }
+
+    // Remove from sessions array
+    const { sessions, currentSessionKey } = get();
+    const newSessions = sessions.filter((s) => s.key !== key);
+    set({ sessions: newSessions });
+
+    // If deleted current session, switch to default
+    if (currentSessionKey === key) {
+      get().switchSession(DEFAULT_SESSION_KEY);
+    }
   },
 
   // ── Load chat history ──

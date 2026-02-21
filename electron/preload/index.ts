@@ -152,6 +152,8 @@ const electronAPI = {
         'usage:getAllRecords',
         'usage:clear',
         'usage:getCurrentModel',
+        // Session
+        'session:delete',
       ];
 
       if (validChannels.includes(channel)) {

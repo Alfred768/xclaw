@@ -12,6 +12,7 @@
     "noLogs": "（暂无日志）",
     "toolbar": {
         "newSession": "新会话",
+        "deleteSession": "删除会话",
         "refresh": "刷新聊天",
         "showThinking": "显示思考过程",
         "hideThinking": "隐藏思考过程"
