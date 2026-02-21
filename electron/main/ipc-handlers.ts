@@ -3,7 +3,7 @@
  * Registers all IPC handlers for main-renderer communication
  */
 import { ipcMain, BrowserWindow, shell, dialog, app, nativeImage } from 'electron';
-import { existsSync, copyFileSync, statSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
+import { existsSync, copyFileSync, statSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, extname, basename } from 'node:path';
 import crypto from 'node:crypto';
@@ -110,22 +110,36 @@ export function registerIpcHandlers(
   // Usage handlers
   registerUsageHandlers();
 
-  // Session handlers (delete session files)
-  ipcMain.handle('session:delete', async () => {
+  // Session handlers (delete session by key)
+  ipcMain.handle('session:delete', async (_, sessionKey: string) => {
     try {
       const sessionsDir = join(homedir(), '.openclaw', 'agents', 'main', 'sessions');
-      if (!existsSync(sessionsDir)) {
-        return { success: true };
+      const sessionsFile = join(sessionsDir, 'sessions.json');
+
+      // Read sessions.json
+      const sessionsData = JSON.parse(readFileSync(sessionsFile, 'utf-8'));
+
+      // Find the session
+      const session = sessionsData[sessionKey];
+      if (!session) {
+        return { success: false, error: 'Session not found' };
       }
-      const files = readdirSync(sessionsDir);
-      const jsonlFiles = files.filter((f) => f.endsWith('.jsonl'));
-      for (const file of jsonlFiles) {
-        const filePath = join(sessionsDir, file);
-        unlinkSync(filePath);
+
+      // Delete the .jsonl file
+      if (session.sessionFile) {
+        const sessionFilePath = session.sessionFile;
+        if (existsSync(sessionFilePath)) {
+          unlinkSync(sessionFilePath);
+        }
       }
+
+      // Remove from sessions.json
+      delete sessionsData[sessionKey];
+      writeFileSync(sessionsFile, JSON.stringify(sessionsData, null, 2));
+
       return { success: true };
     } catch (error) {
-      logger.error('Failed to delete session files:', error);
+      logger.error('Failed to delete session:', error);
       return { success: false, error: String(error) };
     }
   });

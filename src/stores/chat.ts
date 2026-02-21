@@ -784,10 +784,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   deleteSession: async (key: string) => {
     try {
-      // Call backend to delete session files
-      await window.electron.ipcRenderer.invoke('session:delete');
+      // Call backend to delete specific session
+      await window.electron.ipcRenderer.invoke('session:delete', key);
     } catch (err) {
-      console.warn('Failed to delete session files:', err);
+      console.warn('Failed to delete session:', err);
     }
 
     // Remove from sessions array
