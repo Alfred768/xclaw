@@ -493,6 +493,8 @@ function registerGatewayHandlers(
     'files.write',
     'tools.list',
     'tools.call',
+    'skills.status',
+    'skills.update',
   ];
 
   ipcMain.handle('gateway:rpc', async (_, method: string, params?: unknown, timeoutMs?: number) => {
