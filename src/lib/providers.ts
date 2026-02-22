@@ -23,6 +23,7 @@ export interface ProviderConfig {
   type: ProviderType;
   baseUrl?: string;
   model?: string;
+  apiType?: 'openai-completions' | 'openai-responses' | 'anthropic';
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -51,6 +52,10 @@ export interface ProviderTypeInfo {
   modelIdPlaceholder?: string;
   /** Default model ID to pre-fill */
   defaultModelId?: string;
+  /** API type for this provider */
+  apiType?: 'openai-completions' | 'openai-responses' | 'anthropic';
+  /** Default API type for this provider */
+  defaultApiType?: 'openai-completions' | 'openai-responses' | 'anthropic';
 }
 
 import { providerIcons } from '@/assets/providers';
@@ -64,7 +69,7 @@ export const PROVIDER_TYPE_INFO: ProviderTypeInfo[] = [
   { id: 'moonshot', name: 'Moonshot (CN)', icon: '🌙', placeholder: 'sk-...', model: 'Kimi', requiresApiKey: true, defaultBaseUrl: 'https://api.moonshot.cn/v1', defaultModelId: 'kimi-k2.5' },
   { id: 'siliconflow', name: 'SiliconFlow (CN)', icon: '🌊', placeholder: 'sk-...', model: 'Multi-Model', requiresApiKey: true, defaultBaseUrl: 'https://api.siliconflow.cn/v1', defaultModelId: 'Pro/moonshotai/Kimi-K2.5' },
   { id: 'ollama', name: 'Ollama', icon: '🦙', placeholder: 'Not required', requiresApiKey: false, defaultBaseUrl: 'http://localhost:11434', showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'qwen3:latest' },
-  { id: 'custom', name: 'Custom', icon: '⚙️', placeholder: 'API key...', requiresApiKey: true, showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'your-provider/model-id' },
+  { id: 'custom', name: 'Custom', icon: '⚙️', placeholder: 'API key...', requiresApiKey: true, showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'your-provider/model-id', defaultApiType: 'openai-completions' },
 ];
 
 /** Get the SVG logo URL for a provider type, falls back to undefined */

@@ -53,11 +53,9 @@ const REGISTRY: Record<string, ProviderBackendMeta> = {
   google: {
     envVar: 'GEMINI_API_KEY',
     defaultModel: 'google/gemini-3-pro-preview',
-    providerConfig: {
-      baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-      api: 'google',
-      apiKeyEnv: 'GEMINI_API_KEY',
-    },
+    // google is a built-in provider in OpenClaw, no providerConfig needed.
+    // Writing 'api: google' causes "Invalid config" errors since OpenClaw
+    // only supports 'openai-completions', 'openai-responses', 'anthropic-messages'.
   },
   openrouter: {
     envVar: 'OPENROUTER_API_KEY',
@@ -103,6 +101,11 @@ const REGISTRY: Record<string, ProviderBackendMeta> = {
   cerebras: { envVar: 'CEREBRAS_API_KEY' },
   xai: { envVar: 'XAI_API_KEY' },
   mistral: { envVar: 'MISTRAL_API_KEY' },
+  // Custom provider - user-configurable base URL and model
+  custom: {
+    envVar: 'CUSTOM_API_KEY',
+    // defaultModel is undefined - set by user in settings
+  },
 };
 
 /** Get the environment variable name for a provider type */

@@ -41,6 +41,7 @@ export interface ProviderConfig {
   type: 'anthropic' | 'openai' | 'google' | 'openrouter' | 'moonshot' | 'siliconflow' | 'ollama' | 'custom';
   baseUrl?: string;
   model?: string;
+  apiType?: 'openai-completions' | 'openai-responses' | 'anthropic';
   enabled: boolean;
   createdAt: string;
   updatedAt: string;

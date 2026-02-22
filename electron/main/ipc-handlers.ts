@@ -972,15 +972,51 @@ function registerProviderHandlers(): void {
       // Save the provider config
       await saveProvider(config);
 
-      // Store the API key if provided
-      if (apiKey) {
-        await storeApiKey(config.id, apiKey);
+      // Track the effective API key for custom provider config sync
+      let effectiveKey: string | null = null;
 
-        // Also write to OpenClaw auth-profiles.json so the gateway can use it
+      // Store the API key if provided
+      if (apiKey !== undefined) {
+        const trimmedKey = apiKey.trim();
+        if (trimmedKey) {
+          await storeApiKey(config.id, trimmedKey);
+          effectiveKey = trimmedKey;
+
+          // Also write to OpenClaw auth-profiles.json so the gateway can use it
+          try {
+            console.log(`[provider:save] Syncing API key for ${config.type} to auth-profiles.json`);
+            saveProviderKeyToOpenClaw(config.type, trimmedKey);
+          } catch (err) {
+            console.warn('Failed to save key to OpenClaw auth-profiles:', err);
+          }
+        } else {
+          // Empty string means user wants to clear the key
+          await deleteApiKey(config.id);
+          effectiveKey = null;
+        }
+      } else {
+        // No new key provided, fetch existing key for custom provider sync
+        effectiveKey = await getApiKey(config.id);
+      }
+
+      // For custom providers, also write the config to openclaw.json so Gateway can read it
+      if (config.type === 'custom' && config.baseUrl && config.model) {
         try {
-          saveProviderKeyToOpenClaw(config.type, apiKey);
+          console.log('[provider:save] Syncing custom provider to openclaw.json:', {
+            providerId: config.id,
+            type: config.type,
+            model: config.model,
+            baseUrl: config.baseUrl,
+            hasKey: !!effectiveKey,
+          });
+          setOpenClawDefaultModelWithOverride(config.type, config.model, {
+            baseUrl: config.baseUrl,
+            api: config.apiType || 'openai-completions',
+            apiKey: effectiveKey || undefined, // Custom providers need the API key directly in openclaw.json
+          });
         } catch (err) {
-          console.warn('Failed to save key to OpenClaw auth-profiles:', err);
+          console.error('Failed to update openclaw.json with custom provider config:', err);
+          return { success: false, error: `Failed to update OpenClaw config: ${err}` };
         }
       }
 
@@ -1058,14 +1094,43 @@ function registerProviderHandlers(): void {
 
         await saveProvider(nextConfig);
 
+        // Track the effective API key for custom provider config sync
+        let effectiveKey: string | null = null;
+
         if (apiKey !== undefined) {
           const trimmedKey = apiKey.trim();
           if (trimmedKey) {
             await storeApiKey(providerId, trimmedKey);
             saveProviderKeyToOpenClaw(nextConfig.type, trimmedKey);
+            effectiveKey = trimmedKey;
           } else {
             await deleteApiKey(providerId);
             removeProviderKeyFromOpenClaw(nextConfig.type);
+            effectiveKey = null;
+          }
+        } else {
+          // No new key provided, fetch existing key for custom provider sync
+          effectiveKey = await getApiKey(providerId);
+        }
+
+        // For custom providers, also update openclaw.json
+        if (nextConfig.type === 'custom' && nextConfig.baseUrl && nextConfig.model) {
+          try {
+            console.log('[provider:updateWithKey] Syncing custom provider to openclaw.json:', {
+              providerId,
+              type: nextConfig.type,
+              model: nextConfig.model,
+              baseUrl: nextConfig.baseUrl,
+              hasKey: !!effectiveKey,
+            });
+            setOpenClawDefaultModelWithOverride(nextConfig.type, nextConfig.model, {
+              baseUrl: nextConfig.baseUrl,
+              api: nextConfig.apiType || 'openai-completions',
+              apiKey: effectiveKey || undefined, // Custom providers need the API key directly in openclaw.json
+            });
+          } catch (err) {
+            console.error('Failed to update openclaw.json with custom provider config:', err);
+            return { success: false, error: `Failed to update OpenClaw config: ${err}` };
           }
         }
 
@@ -1137,9 +1202,12 @@ function registerProviderHandlers(): void {
 
           if (provider.type === 'custom' || provider.type === 'ollama') {
             // For runtime-configured providers, use user-entered base URL/api.
+            // Also include the API key - custom providers need it directly in openclaw.json
+            const providerKey = await getApiKey(providerId);
             setOpenClawDefaultModelWithOverride(provider.type, modelOverride, {
               baseUrl: provider.baseUrl,
-              api: 'openai-completions',
+              api: provider.apiType || 'openai-completions',
+              apiKey: providerKey,
             });
           } else {
             setOpenClawDefaultModel(provider.type, modelOverride);
@@ -1147,9 +1215,13 @@ function registerProviderHandlers(): void {
 
           // Keep auth-profiles in sync with the default provider instance.
           // This is especially important when multiple custom providers exist.
+          // Also ensures API key is present if it was previously lost.
           const providerKey = await getApiKey(providerId);
           if (providerKey) {
+            console.log(`[provider:setDefault] Syncing API key for ${provider.type} to auth-profiles.json`);
             saveProviderKeyToOpenClaw(provider.type, providerKey);
+          } else {
+            console.warn(`[provider:setDefault] No API key found for provider ${providerId}, cannot sync to auth-profiles.json`);
           }
         } catch (err) {
           console.warn('Failed to set OpenClaw default model:', err);
@@ -1429,10 +1501,8 @@ async function validateGoogleQueryKey(
   apiKey: string,
   baseUrl?: string
 ): Promise<{ valid: boolean; error?: string }> {
-  const trimmedBaseUrl = baseUrl?.trim();
-  if (!trimmedBaseUrl) {
-    return { valid: false, error: `Base URL is required for provider "${providerType}" validation` };
-  }
+  // Google is a built-in provider - use default URL if not provided
+  const trimmedBaseUrl = baseUrl?.trim() || 'https://generativelanguage.googleapis.com/v1beta';
 
   const base = normalizeBaseUrl(trimmedBaseUrl);
   const url = `${base}/models?pageSize=1&key=${encodeURIComponent(apiKey)}`;

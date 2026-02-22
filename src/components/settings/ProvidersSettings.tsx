@@ -58,7 +58,7 @@ export function ProvidersSettings() {
     type: ProviderType,
     name: string,
     apiKey: string,
-    options?: { baseUrl?: string; model?: string }
+    options?: { baseUrl?: string; model?: string; apiType?: 'openai-completions' | 'openai-responses' | 'anthropic' }
   ) => {
     // Only custom supports multiple instances.
     // Built-in providers remain singleton by type.
@@ -71,13 +71,15 @@ export function ProvidersSettings() {
           name,
           baseUrl: options?.baseUrl,
           model: options?.model,
+          apiType: options?.apiType,
           enabled: true,
         },
         apiKey.trim() || undefined
       );
 
-      // Auto-set as default if this is the first provider
-      if (providers.length === 0) {
+      // Auto-set as default if this is the first provider OR if it's a custom/ollama provider
+      // (custom providers need to be set as default to be used by OpenClaw)
+      if (providers.length === 0 || type === 'custom' || type === 'ollama') {
         await setDefaultProvider(id);
       }
 
@@ -204,6 +206,7 @@ function ProviderCard({
   const [newKey, setNewKey] = useState('');
   const [baseUrl, setBaseUrl] = useState(provider.baseUrl || '');
   const [modelId, setModelId] = useState(provider.model || '');
+  const [apiType, setApiType] = useState<'openai-completions' | 'openai-responses' | 'anthropic' | ''>(provider.apiType || '');
   const [showKey, setShowKey] = useState(false);
   const [validating, setValidating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -217,8 +220,9 @@ function ProviderCard({
       setShowKey(false);
       setBaseUrl(provider.baseUrl || '');
       setModelId(provider.model || '');
+      setApiType(provider.apiType || '');
     }
-  }, [isEditing, provider.baseUrl, provider.model]);
+  }, [isEditing, provider.baseUrl, provider.model, provider.apiType]);
 
   const handleSaveEdits = async () => {
     setSaving(true);
@@ -252,6 +256,9 @@ function ProviderCard({
         }
         if ((modelId.trim() || undefined) !== (provider.model || undefined)) {
           updates.model = modelId.trim() || undefined;
+        }
+        if ((apiType || undefined) !== (provider.apiType || undefined)) {
+          updates.apiType = apiType || undefined;
         }
         if (Object.keys(updates).length > 0) {
           payload.updates = updates;
@@ -322,6 +329,20 @@ function ProviderCard({
                     />
                   </div>
                 )}
+                {/* API Type Selector in Edit Mode */}
+                <div className="space-y-1">
+                  <Label className="text-xs">{t('aiProviders.dialog.apiType') || 'API Type'}</Label>
+                  <select
+                    value={apiType}
+                    onChange={(e) => setApiType(e.target.value as 'openai-completions' | 'openai-responses' | 'anthropic' | '')}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Auto-detect</option>
+                    <option value="openai-completions">OpenAI Completions</option>
+                    <option value="openai-responses">OpenAI Responses</option>
+                    <option value="anthropic">Anthropic</option>
+                  </select>
+                </div>
               </>
             )}
             <div className="flex gap-2">
@@ -352,6 +373,7 @@ function ProviderCard({
                     !newKey.trim()
                     && (baseUrl.trim() || undefined) === (provider.baseUrl || undefined)
                     && (modelId.trim() || undefined) === (provider.model || undefined)
+                    && (apiType || undefined) === (provider.apiType || undefined)
                   )
                   || Boolean(typeInfo?.showModelId && !modelId.trim())
                 }
@@ -421,7 +443,7 @@ interface AddProviderDialogProps {
     type: ProviderType,
     name: string,
     apiKey: string,
-    options?: { baseUrl?: string; model?: string }
+    options?: { baseUrl?: string; model?: string; apiType?: 'openai-completions' | 'openai-responses' | 'anthropic' }
   ) => Promise<void>;
   onValidateKey: (
     type: string,
@@ -442,6 +464,7 @@ function AddProviderDialog({ existingTypes, onClose, onAdd, onValidateKey }: Add
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const typeInfo = PROVIDER_TYPE_INFO.find((t) => t.id === selectedType);
+  const [apiType, setApiType] = useState<'openai-completions' | 'openai-responses' | 'anthropic' | ''>(typeInfo?.defaultApiType || '');
 
   // Only custom can be added multiple times.
   const availableTypes = PROVIDER_TYPE_INFO.filter(
@@ -487,6 +510,7 @@ function AddProviderDialog({ existingTypes, onClose, onAdd, onValidateKey }: Add
         {
           baseUrl: baseUrl.trim() || undefined,
           model: (typeInfo?.defaultModelId || modelId.trim()) || undefined,
+          apiType: apiType || undefined,
         }
       );
     } catch {
@@ -516,6 +540,7 @@ function AddProviderDialog({ existingTypes, onClose, onAdd, onValidateKey }: Add
                     setName(type.id === 'custom' ? t('aiProviders.custom') : type.name);
                     setBaseUrl(type.defaultBaseUrl || '');
                     setModelId(type.defaultModelId || '');
+                    setApiType(type.defaultApiType || '');
                   }}
                   className="p-4 rounded-lg border hover:bg-accent transition-colors text-center"
                 >
@@ -618,6 +643,22 @@ function AddProviderDialog({ existingTypes, onClose, onAdd, onValidateKey }: Add
                   />
                 </div>
               )}
+
+              {/* API Type Selector */}
+              <div className="space-y-2">
+                <Label htmlFor="apiType">{t('aiProviders.dialog.apiType') || 'API Type'}</Label>
+                <select
+                  id="apiType"
+                  value={apiType}
+                  onChange={(e) => setApiType(e.target.value as 'openai-completions' | 'openai-responses' | 'anthropic' | '')}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">Auto-detect</option>
+                  <option value="openai-completions">OpenAI Completions</option>
+                  <option value="openai-responses">OpenAI Responses</option>
+                  <option value="anthropic">Anthropic</option>
+                </select>
+              </div>
             </div>
           )}
 

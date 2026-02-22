@@ -16,7 +16,7 @@ import {
   isOpenClawPresent 
 } from '../utils/paths';
 import { getSetting } from '../utils/store';
-import { getApiKey, getDefaultProvider, getProvider } from '../utils/secure-storage';
+import { getApiKey, getDefaultProvider, getProvider, getAllProviders } from '../utils/secure-storage';
 import { getProviderEnvVar, getKeyableProviderTypes } from '../utils/provider-registry';
 import { GatewayEventType, JsonRpcNotification, isNotification, isResponse } from './protocol';
 import { logger } from '../utils/logger';
@@ -529,15 +529,18 @@ export class GatewayManager extends EventEmitter {
     // Prefer the selected default provider key when provider IDs are instance-based.
     try {
       const defaultProviderId = await getDefaultProvider();
+      logger.debug(`Loading default provider key, defaultProviderId=${defaultProviderId}`);
       if (defaultProviderId) {
         const defaultProvider = await getProvider(defaultProviderId);
         const defaultProviderType = defaultProvider?.type;
         const defaultProviderKey = await getApiKey(defaultProviderId);
+        logger.debug(`Default provider: type=${defaultProviderType}, hasKey=${!!defaultProviderKey}`);
         if (defaultProviderType && defaultProviderKey) {
           const envVar = getProviderEnvVar(defaultProviderType);
           if (envVar) {
             providerEnv[envVar] = defaultProviderKey;
             loadedProviderKeyCount++;
+            logger.info(`Injected env var ${envVar} from default provider ${defaultProviderId}`);
           }
         }
       }
@@ -547,12 +550,33 @@ export class GatewayManager extends EventEmitter {
 
     for (const providerType of providerTypes) {
       try {
-        const key = await getApiKey(providerType);
-        if (key) {
-          const envVar = getProviderEnvVar(providerType);
-          if (envVar) {
-            providerEnv[envVar] = key;
-            loadedProviderKeyCount++;
+        // For custom/ollama providers, API keys are stored with provider instance IDs,
+        // not with the type name. Need to iterate through all provider instances.
+        if (providerType === 'custom' || providerType === 'ollama') {
+          const allProviders = await getAllProviders();
+          logger.debug(`Loading ${providerType} providers, found ${allProviders.filter(p => p.type === providerType).length} instances`);
+          for (const provider of allProviders) {
+            if (provider.type === providerType) {
+              const key = await getApiKey(provider.id);
+              if (key) {
+                const envVar = getProviderEnvVar(providerType);
+                if (envVar && !providerEnv[envVar]) {
+                  providerEnv[envVar] = key;
+                  loadedProviderKeyCount++;
+                  logger.info(`Injected env var ${envVar} from ${providerType} provider ${provider.id}`);
+                }
+              }
+            }
+          }
+        } else {
+          // Built-in providers store keys by type name
+          const key = await getApiKey(providerType);
+          if (key) {
+            const envVar = getProviderEnvVar(providerType);
+            if (envVar) {
+              providerEnv[envVar] = key;
+              loadedProviderKeyCount++;
+            }
           }
         }
       } catch (err) {
