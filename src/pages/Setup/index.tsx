@@ -38,6 +38,7 @@ import {
   type ChannelMeta,
   type ChannelConfigField,
 } from '@/types/channel';
+import { AuthContent } from './AuthContent';
 
 interface SetupStep {
   id: string;
@@ -47,11 +48,12 @@ interface SetupStep {
 
 const STEP = {
   WELCOME: 0,
-  RUNTIME: 1,
-  PROVIDER: 2,
-  CHANNEL: 3,
-  INSTALLING: 4,
-  COMPLETE: 5,
+  AUTH: 1,
+  RUNTIME: 2,
+  PROVIDER: 3,
+  CHANNEL: 4,
+  INSTALLING: 5,
+  COMPLETE: 6,
 } as const;
 
 const steps: SetupStep[] = [
@@ -59,6 +61,11 @@ const steps: SetupStep[] = [
     id: 'welcome',
     title: 'Welcome to ClawX',
     description: 'Your AI assistant is ready to be configured',
+  },
+  {
+    id: 'auth',
+    title: 'Sign In',
+    description: 'Create or sign in to your account',
   },
   {
     id: 'runtime',
@@ -124,6 +131,8 @@ export function Setup() {
   const [installedSkills, setInstalledSkills] = useState<string[]>([]);
   // Runtime check status
   const [runtimeChecksPassed, setRuntimeChecksPassed] = useState(false);
+  // Auth status
+  const [authCompleted, setAuthCompleted] = useState(false);
 
   const safeStepIndex = Number.isInteger(currentStep)
     ? Math.min(Math.max(currentStep, STEP.WELCOME), steps.length - 1)
@@ -139,6 +148,8 @@ export function Setup() {
     switch (safeStepIndex) {
       case STEP.WELCOME:
         return true;
+      case STEP.AUTH:
+        return authCompleted;
       case STEP.RUNTIME:
         return runtimeChecksPassed;
       case STEP.PROVIDER:
@@ -152,7 +163,7 @@ export function Setup() {
       default:
         return true;
     }
-  }, [safeStepIndex, providerConfigured, runtimeChecksPassed]);
+  }, [safeStepIndex, providerConfigured, runtimeChecksPassed, authCompleted]);
 
   const handleNext = async () => {
     if (isLastStep) {
@@ -239,6 +250,9 @@ export function Setup() {
             {/* Step-specific content */}
             <div className="rounded-xl bg-card text-card-foreground border shadow-sm p-8 mb-8">
               {safeStepIndex === STEP.WELCOME && <WelcomeContent />}
+              {safeStepIndex === STEP.AUTH && (
+                <AuthContent onComplete={() => setAuthCompleted(true)} />
+              )}
               {safeStepIndex === STEP.RUNTIME && <RuntimeContent onStatusChange={setRuntimeChecksPassed} />}
               {safeStepIndex === STEP.PROVIDER && (
                 <ProviderContent
@@ -283,7 +297,7 @@ export function Setup() {
                       {t('nav.skipStep')}
                     </Button>
                   )}
-                  {!isLastStep && safeStepIndex !== STEP.RUNTIME && safeStepIndex !== STEP.CHANNEL && (
+                  {!isLastStep && safeStepIndex !== STEP.RUNTIME && safeStepIndex !== STEP.CHANNEL && safeStepIndex !== STEP.AUTH && (
                     <Button variant="ghost" onClick={handleSkip}>
                       {t('nav.skipSetup')}
                     </Button>

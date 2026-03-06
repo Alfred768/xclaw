@@ -40,6 +40,12 @@ export const useGatewayStore = create<GatewayState>((set, get) => ({
   lastError: null,
 
   init: async () => {
+    // Skip initialization in browser context
+    if (!window.electron?.ipcRenderer) {
+      set({ isInitialized: true, status: { state: 'stopped', port: 18789 } });
+      return;
+    }
+
     if (get().isInitialized) return;
     if (gatewayInitPromise) {
       await gatewayInitPromise;

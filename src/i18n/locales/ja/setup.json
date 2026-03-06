@@ -4,6 +4,10 @@
             "title": "ClawXへようこそ",
             "description": "AIアシスタントの設定準備が整いました"
         },
+        "auth": {
+            "title": "サインイン",
+            "description": "アカウントを作成またはサインイン"
+        },
         "runtime": {
             "title": "環境チェック",
             "description": "システム要件を確認中"
@@ -34,6 +38,21 @@
             "bundles": "プリインストールされたスキルバンドル",
             "crossPlatform": "クロスプラットフォーム対応"
         }
+    },
+    "auth": {
+        "title": "アカウントにサインイン",
+        "description": "続行するにはお好みのサインイン方法を選択してください",
+        "selectProvider": "サインイン方法を選択",
+        "wechat": "WeChat",
+        "alipay": "Alipay",
+        "generateQR": "QRコードを生成",
+        "scanQR": "{{provider}}でQRコードをスキャン",
+        "refreshQR": "QRコードを更新",
+        "loginSuccess": "ログイン成功！",
+        "welcomeUser": "ようこそ、{{user}}さん！",
+        "scanning": "スキャン待機中...",
+        "expired": "QRコードの有効期限が切れました",
+        "error": "エラーが発生しました"
     },
     "runtime": {
         "title": "環境をチェック中",

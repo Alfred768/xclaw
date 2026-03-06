@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>验证失败</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; }
+        .container { text-align: center; padding: 40px 60px; background: rgba(255, 255, 255, 0.25); border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+        .icon { font-size: 72px; margin-bottom: 24px; }
+        h1 { font-size: 28px; margin-bottom: 12px; }
+        p { font-size: 16px; opacity: 0.9; max-width: 300px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">❌</div>
+        <h1 id="title">验证出错</h1>
+        <p id="message">请返回重试</p>
+    </div>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const title = params.get('title');
+        const message = params.get('message');
+        if (title) document.getElementById('title').textContent = decodeURIComponent(title);
+        if (message) document.getElementById('message').textContent = decodeURIComponent(message);
+    </script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+# A string used to distinguish different Supabase projects
+project_id = "clawx-auth"
+
+[api]
+# Port to use for the API URL.
+port = 54321
+# Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
+# endpoints. public and storage are always included.
+schemas = ["public", "storage", "auth"]
+# Extra schemas to add to the search_path of every request.
+extra_search_path = ["public", "extensions"]
+# The maximum number of rows returns from a view, table, or stored procedure.
+max_rows = 1000
+
+[db]
+# Port to use for the local database URL.
+port = 54322
+# The database major version to use.
+major_version = 17
+
+[studio]
+# Port to use for Supabase Studio.
+enabled = true
+port = 54323
+# External URL of the API gateway that frontend clients access.
+api_url = "http://127.0.0.1"
+
+# Email testing server. Emails sent with the local dev setup are not actually delivered - instead, they
+# are monitored, and you can view the emails that would have been sent from the web interface.
+[inbucket]
+# Port to use for the email testing server web interface.
+enabled = true
+port = 54324
+# Sender name to display for emails sent from the inbucket server.
+sender_name = "admin"
+
+[storage]
+# The maximum file size allowed (e.g. "5MB", "500KB").
+file_size_limit = "50MiB"
+
+[auth]
+# The base URL of your website. Used as an allow-list for redirects.
+site_url = "http://127.0.0.1:3000"
+# A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
+additional_redirect_urls = ["http://127.0.0.1:3000/**", "http://localhost:3000/**"]
+# How long tokens are valid for, in seconds.
+jwt_expiry = 3600
+# If disabled, the refresh token will never expire.
+enable_refresh_token_rotation = true
+# Allows refresh tokens to be reused after expiry, up to the specified number of uses.
+refresh_token_reuse_interval = 10
+# Allow/disallow new user signups to your project.
+enable_signup = true
+# Allow/disallow anonymous sign-ins to your project.
+enable_anonymous_sign_ins = false
+# Allow/disallow testing manual linking of accounts
+enable_manual_linking = false
+
+[auth.email]
+# Allow/disallow new email signups to your project.
+enable_signup = true
+# If enabled, a user will be required to confirm any email change on both the old, and new email
+# addresses. If disabled, only the new email is required to confirm.
+double_confirm_changes = true
+# If enabled, users need to reauthenticate once their session is older than the
+# secure_password_change option.
+secure_password_change = true
+
+# Use an external OAuth provider. The full user info endpoint URL that returns the user's info.
+# For example: "https://api.github.com/user"
+# [auth.external.github]
+# enabled = true
+# client_id = ""
+# secret = ""
+# redirect_uri = ""
+# url = ""
+# authorize_url = ""
+
+[auth.external.wechat]
+enabled = false
+client_id = "env(WECHAT_APP_ID)"
+secret = "env(WECHAT_APP_SECRET)"
+redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
+
+[auth.external.alipay]
+enabled = false
+client_id = "env(ALIPAY_APP_ID)"
+secret = "env(ALIPAY_PRIVATE_KEY)"
+redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
+
+[edge_runtime]
+enabled = true
+# Inspectors are used for debugging Edge Functions. They are optional.
+policy = "per_worker"
+inspector_port = 8083
+
+[functions.auth-init]
+verify_jwt = false
+
+[functions.auth-callback]
+verify_jwt = false
+
+[functions.get-session]
+verify_jwt = false

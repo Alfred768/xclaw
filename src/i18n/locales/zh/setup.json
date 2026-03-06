@@ -4,6 +4,10 @@
             "title": "欢迎使用 ClawX",
             "description": "您的 AI 助手已准备好进行配置"
         },
+        "auth": {
+            "title": "登录",
+            "description": "创建或登录您的账户"
+        },
         "runtime": {
             "title": "环境检查",
             "description": "验证系统要求"
@@ -34,6 +38,21 @@
             "bundles": "预装技能包",
             "crossPlatform": "跨平台支持"
         }
+    },
+    "auth": {
+        "title": "登录您的账户",
+        "description": "选择您喜欢的登录方式继续",
+        "selectProvider": "选择登录方式",
+        "wechat": "微信",
+        "alipay": "支付宝",
+        "generateQR": "生成二维码",
+        "scanQR": "使用{{provider}}扫描二维码",
+        "refreshQR": "刷新二维码",
+        "loginSuccess": "登录成功！",
+        "welcomeUser": "欢迎，{{user}}！",
+        "scanning": "等待扫码...",
+        "expired": "二维码已过期",
+        "error": "发生错误"
     },
     "runtime": {
         "title": "检查环境",

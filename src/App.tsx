@@ -128,6 +128,9 @@ function App() {
 
   // Listen for navigation events from main process
   useEffect(() => {
+    // Skip in browser context (not running in Electron)
+    if (!window.electron?.ipcRenderer) return;
+
     const handleNavigate = (...args: unknown[]) => {
       const path = args[0];
       if (typeof path === 'string') {

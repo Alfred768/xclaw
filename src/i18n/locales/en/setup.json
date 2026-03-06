@@ -4,6 +4,10 @@
             "title": "Welcome to ClawX",
             "description": "Your AI assistant is ready to be configured"
         },
+        "auth": {
+            "title": "Sign In",
+            "description": "Create or sign in to your account"
+        },
         "runtime": {
             "title": "Environment Check",
             "description": "Verifying system requirements"
@@ -34,6 +38,21 @@
             "bundles": "Pre-installed skill bundles",
             "crossPlatform": "Cross-platform support"
         }
+    },
+    "auth": {
+        "title": "Sign In to Your Account",
+        "description": "Choose your preferred sign-in method to continue",
+        "selectProvider": "Select a sign-in method",
+        "wechat": "WeChat",
+        "alipay": "Alipay",
+        "generateQR": "Generate QR Code",
+        "scanQR": "Scan the QR code with {{provider}}",
+        "refreshQR": "Refresh QR Code",
+        "loginSuccess": "Login successful!",
+        "welcomeUser": "Welcome, {{user}}!",
+        "scanning": "Waiting for scan...",
+        "expired": "QR code expired",
+        "error": "An error occurred"
     },
     "runtime": {
         "title": "Checking Environment",

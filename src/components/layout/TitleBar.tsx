@@ -23,25 +23,25 @@ function WindowsTitleBar() {
 
   useEffect(() => {
     // Check initial state
-    window.electron.ipcRenderer.invoke('window:isMaximized').then((val) => {
+    window.electron?.ipcRenderer.invoke('window:isMaximized').then((val) => {
       setMaximized(val as boolean);
     });
   }, []);
 
   const handleMinimize = () => {
-    window.electron.ipcRenderer.invoke('window:minimize');
+    window.electron?.ipcRenderer.invoke('window:minimize');
   };
 
   const handleMaximize = () => {
-    window.electron.ipcRenderer.invoke('window:maximize').then(() => {
-      window.electron.ipcRenderer.invoke('window:isMaximized').then((val) => {
+    window.electron?.ipcRenderer.invoke('window:maximize').then(() => {
+      window.electron?.ipcRenderer.invoke('window:isMaximized').then((val) => {
         setMaximized(val as boolean);
       });
     });
   };
 
   const handleClose = () => {
-    window.electron.ipcRenderer.invoke('window:close');
+    window.electron?.ipcRenderer.invoke('window:close');
   };
 
   return (

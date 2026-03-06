@@ -50,6 +50,13 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    proxy: {
+      '/api': {
+        target: 'https://zpeiuaojlprxdlakmnxg.supabase.co',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/functions/v1'),
+      },
+    },
   },
   build: {
     outDir: 'dist',

@@ -23,6 +23,20 @@
             border-radius: 20px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
         }
+        .logo {
+            margin-bottom: 16px;
+        }
+        .logo img {
+            width: 64px;
+            height: 64px;
+            border-radius: 12px;
+        }
+        .app-name {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            opacity: 0.95;
+        }
         .icon { font-size: 72px; margin-bottom: 24px; }
         h1 { font-size: 28px; margin-bottom: 12px; }
         p { font-size: 16px; opacity: 0.9; max-width: 300px; margin: 0 auto; }
@@ -33,6 +47,10 @@
 <body>
     <!-- Success Page -->
     <div id="success-page" class="container hidden">
+        <div class="logo">
+            <img src="logo.png" alt="OpenClaw">
+        </div>
+        <h2 class="app-name">OpenClaw桌面版</h2>
         <div class="icon">✅</div>
         <h1>登录成功！</h1>
         <p>您可以关闭此窗口并返回应用</p>
@@ -41,6 +59,10 @@
 
     <!-- Error Page -->
     <div id="error-page" class="container hidden">
+        <div class="logo">
+            <img src="logo.png" alt="OpenClaw">
+        </div>
+        <h2 class="app-name">OpenClaw桌面版</h2>
         <div class="icon">❌</div>
         <h1 id="error-title">出错了</h1>
         <p id="error-message">请重试</p>

@@ -23,6 +23,7 @@ release/
 .env
 .env.local
 .env.*.local
+supabase/.env.local
 
 # Logs
 logs
@@ -66,3 +67,4 @@ build/
 # Local user data (do not commit)
 .openclaw/
 .clawx-data/
+Keys/
