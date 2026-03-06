@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Result</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+        }
+        .success { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .error { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); }
+        .container {
+            text-align: center;
+            padding: 40px 60px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        .icon { font-size: 72px; margin-bottom: 24px; }
+        h1 { font-size: 28px; margin-bottom: 12px; }
+        p { font-size: 16px; opacity: 0.9; max-width: 300px; margin: 0 auto; }
+        .countdown { margin-top: 20px; font-size: 14px; opacity: 0.7; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <!-- Success Page -->
+    <div id="success-page" class="container hidden">
+        <div class="icon">✅</div>
+        <h1>登录成功！</h1>
+        <p>您可以关闭此窗口并返回应用</p>
+        <p class="countdown" id="countdown">3 秒后自动关闭...</p>
+    </div>
+
+    <!-- Error Page -->
+    <div id="error-page" class="container hidden">
+        <div class="icon">❌</div>
+        <h1 id="error-title">出错了</h1>
+        <p id="error-message">请重试</p>
+    </div>
+
+    <script>
+        // Parse URL parameters
+        const params = new URLSearchParams(window.location.search);
+        const type = params.get('type') || 'error';
+        const title = params.get('title') || '出错了';
+        const message = params.get('message') || '请重试';
+
+        if (type === 'success') {
+            document.body.classList.add('success');
+            document.getElementById('success-page').classList.remove('hidden');
+
+            // Countdown timer
+            let seconds = 3;
+            const countdownEl = document.getElementById('countdown');
+            const timer = setInterval(() => {
+                seconds--;
+                if (seconds > 0) {
+                    countdownEl.textContent = seconds + ' 秒后自动关闭...';
+                } else {
+                    clearInterval(timer);
+                    countdownEl.textContent = '正在关闭...';
+                    window.close();
+                }
+            }, 1000);
+        } else {
+            document.body.classList.add('error');
+            document.getElementById('error-page').classList.remove('hidden');
+            document.getElementById('error-title').textContent = decodeURIComponent(title);
+            document.getElementById('error-message').textContent = decodeURIComponent(message);
+        }
+    </script>
+</body>
+</html>
