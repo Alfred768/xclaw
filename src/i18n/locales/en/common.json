@@ -9,7 +9,8 @@
         "devConsole": "Developer Console",
         "todo": "Todo",
         "briefing": "Briefing",
-        "usage": "Usage"
+        "usage": "Usage",
+        "account": "Account"
     },
     "nav": {
         "chat": "Chat",

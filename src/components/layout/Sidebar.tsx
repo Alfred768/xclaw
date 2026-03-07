@@ -18,6 +18,7 @@ import {
   ListTodo,
   Newspaper,
   BarChart2,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore } from '@/stores/settings';
@@ -96,6 +97,7 @@ export function Sidebar() {
     { to: '/todo', icon: <ListTodo className="h-5 w-5" />, label: t('sidebar.todo') },
     { to: '/briefing', icon: <Newspaper className="h-5 w-5" />, label: t('sidebar.briefing') },
     { to: '/usage', icon: <BarChart2 className="h-5 w-5" />, label: t('sidebar.usage') },
+    { to: '/account', icon: <User className="h-5 w-5" />, label: t('sidebar.account') },
     { to: '/settings', icon: <Settings className="h-5 w-5" />, label: t('sidebar.settings') },
   ];
 

@@ -94,6 +94,9 @@ serve(async (req) => {
           display_name: session.user_info?.nickname || profile?.display_name,
           avatar_url: session.user_info?.avatar || profile?.avatar_url,
           subscription_tier: profile?.subscription_tier || 'free',
+          // Include binding information from profile
+          alipay_user_id: profile?.alipay_user_id || null,
+          wechat_openid: profile?.wechat_openid || null,
         },
       }),
       {

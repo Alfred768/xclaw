@@ -1,0 +1,75 @@
+{
+  "title": "Account",
+  "subtitle": "Manage your account settings and preferences",
+  "tabs": {
+    "profile": "Profile",
+    "security": "Security",
+    "usage": "Usage & Quota",
+    "developer": "Developer"
+  },
+  "profile": {
+    "title": "Profile Information",
+    "description": "Your basic account information",
+    "avatar": "Avatar",
+    "changeAvatar": "Change Avatar",
+    "displayName": "Display Name",
+    "displayNamePlaceholder": "Enter your display name",
+    "userId": "User ID",
+    "memberSince": "Member Since",
+    "saving": "Saving...",
+    "saved": "Saved successfully"
+  },
+  "security": {
+    "title": "Account Security",
+    "description": "Manage your account bindings and security settings",
+    "bindings": "Account Bindings",
+    "alipay": "Alipay",
+    "alipayBound": "Bound",
+    "alipayNotBound": "Not Bound",
+    "wechat": "WeChat",
+    "wechatBound": "Bound",
+    "wechatNotBound": "Not Bound",
+    "bind": "Bind",
+    "logout": "Sign Out",
+    "logoutConfirm": "Are you sure you want to sign out?"
+  },
+  "usage": {
+    "title": "Usage & Quota",
+    "description": "Your current usage and subscription details",
+    "currentPlan": "Current Plan",
+    "tokensUsed": "Tokens Used",
+    "tokensQuota": "Token Quota",
+    "upgrade": "Upgrade Plan",
+    "resetDate": "Resets on",
+    "plans": {
+      "free": "Free",
+      "pro": "Pro",
+      "enterprise": "Enterprise"
+    }
+  },
+  "developer": {
+    "title": "Developer Settings",
+    "description": "Manage API keys for programmatic access",
+    "apiKeys": "API Keys",
+    "createKey": "Create New Key",
+    "keyName": "Key Name",
+    "keyNamePlaceholder": "e.g., Production App",
+    "created": "Created",
+    "lastUsed": "Last Used",
+    "never": "Never",
+    "revoke": "Revoke",
+    "revokeConfirm": "Are you sure you want to revoke this API key?",
+    "keyCreated": "API Key Created",
+    "keyCreatedDesc": "Make sure to copy your API key now. You won't be able to see it again!",
+    "copyKey": "Copy Key",
+    "keyCopied": "API key copied to clipboard",
+    "noKeys": "No API keys yet",
+    "noKeysDesc": "Create an API key to access ClawX programmatically"
+  },
+  "errors": {
+    "fetchFailed": "Failed to load account data",
+    "updateFailed": "Failed to update profile",
+    "keyCreateFailed": "Failed to create API key",
+    "keyRevokeFailed": "Failed to revoke API key"
+  }
+}

@@ -63,7 +63,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { provider } = body;
+    const { provider, userId } = body;
 
     if (!provider || !['wechat', 'alipay'].includes(provider)) {
       return new Response(JSON.stringify({ error: 'Invalid provider' }), {
@@ -93,7 +93,7 @@ serve(async (req) => {
     // Session expires in 5 minutes
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
-    // Create auth session record
+    // Create auth session record (store userId for binding provider to existing account)
     const { error: insertError } = await supabase
       .from('auth_sessions')
       .insert({
@@ -101,6 +101,7 @@ serve(async (req) => {
         provider,
         status: 'pending',
         expires_at: expiresAt,
+        supabase_user_id: userId || null,
       });
 
     if (insertError) {

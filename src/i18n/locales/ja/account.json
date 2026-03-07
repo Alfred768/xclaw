@@ -1,0 +1,75 @@
+{
+  "title": "アカウント",
+  "subtitle": "アカウント設定と設定の管理",
+  "tabs": {
+    "profile": "プロフィール",
+    "security": "セキュリティ",
+    "usage": "使用状況",
+    "developer": "開発者"
+  },
+  "profile": {
+    "title": "プロフィール情報",
+    "description": "基本アカウント情報",
+    "avatar": "アバター",
+    "changeAvatar": "アバターを変更",
+    "displayName": "表示名",
+    "displayNamePlaceholder": "表示名を入力",
+    "userId": "ユーザーID",
+    "memberSince": "登録日",
+    "saving": "保存中...",
+    "saved": "保存成功"
+  },
+  "security": {
+    "title": "アカウントセキュリティ",
+    "description": "アカウント連携とセキュリティ設定の管理",
+    "bindings": "アカウント連携",
+    "alipay": "Alipay",
+    "alipayBound": "連携済み",
+    "alipayNotBound": "未連携",
+    "wechat": "WeChat",
+    "wechatBound": "連携済み",
+    "wechatNotBound": "未連携",
+    "bind": "連携",
+    "logout": "ログアウト",
+    "logoutConfirm": "ログアウトしてもよろしいですか？"
+  },
+  "usage": {
+    "title": "使用状況",
+    "description": "現在の使用状況とサブスクリプションの詳細",
+    "currentPlan": "現在のプラン",
+    "tokensUsed": "使用済みトークン",
+    "tokensQuota": "トークン割当て",
+    "upgrade": "プランをアップグレード",
+    "resetDate": "リセット日",
+    "plans": {
+      "free": "無料",
+      "pro": "プロ",
+      "enterprise": "エンタープライズ"
+    }
+  },
+  "developer": {
+    "title": "開発者設定",
+    "description": "プログラムによるアクセス用のAPIキーを管理",
+    "apiKeys": "APIキー",
+    "createKey": "新しいキーを作成",
+    "keyName": "キー名",
+    "keyNamePlaceholder": "例：本番アプリ",
+    "created": "作成日",
+    "lastUsed": "最終使用",
+    "never": "未使用",
+    "revoke": "取り消し",
+    "revokeConfirm": "このAPIキーを取り消してもよろしいですか？",
+    "keyCreated": "APIキーが作成されました",
+    "keyCreatedDesc": "今すぐAPIキーをコピーしてください。再度表示することはできません！",
+    "copyKey": "キーをコピー",
+    "keyCopied": "APIキーをクリップボードにコピーしました",
+    "noKeys": "APIキーがありません",
+    "noKeysDesc": "ClawXへのプログラムアクセス用にAPIキーを作成してください"
+  },
+  "errors": {
+    "fetchFailed": "アカウントデータの読み込みに失敗しました",
+    "updateFailed": "プロフィールの更新に失敗しました",
+    "keyCreateFailed": "APIキーの作成に失敗しました",
+    "keyRevokeFailed": "APIキーの取り消しに失敗しました"
+  }
+}

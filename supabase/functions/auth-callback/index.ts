@@ -79,22 +79,75 @@ async function getWechatUserInfo(code: string) {
   } catch { return null; }
 }
 
-async function createOrGetUser(provider: string, providerId: string, info: any) {
+async function createOrGetUser(provider: string, providerId: string, info: any, supabaseUserId?: string) {
   const field = provider === 'wechat' ? 'wechat_openid' : 'alipay_user_id';
-  const { data: profile } = await supabase.from('user_profiles').select('id').eq(field, providerId).single();
-  let userId = profile?.id;
-  let email = profile ? null : `${provider}_${providerId}@clawx.temp`;
 
-  if (!userId) {
-    const { data: newUser, error } = await supabase.auth.admin.createUser({
-      email, email_confirm: true, user_metadata: { display_name: info.nickname, avatar_url: info.avatar || info.headimgurl }
-    });
-    if (error || !newUser.user) return null;
-    userId = newUser.user.id;
-    await supabase.from('user_profiles').update({ [field]: providerId }).eq('id', userId);
+  // 1. Check if this provider is already bound to any user
+  const { data: existingProfile } = await supabase.from('user_profiles').select('id, display_name').eq(field, providerId).single();
+
+  if (existingProfile) {
+    // Provider is already bound to a user
+    console.log('[createOrGetUser] Provider already bound to user:', existingProfile.id, 'current user:', supabaseUserId || 'not logged in');
+
+    // If user is trying to BIND (supabaseUserId provided), check for conflict
+    if (supabaseUserId && existingProfile.id !== supabaseUserId) {
+      // Logged-in user trying to bind a provider that's already bound to a different user
+      console.log('[createOrGetUser] Binding conflict: provider bound to different user');
+      return null;
+    }
+
+    // ✅ Verify the profile is complete (has display_name)
+    // If profile is incomplete, update it
+    if (!existingProfile.display_name) {
+      console.log('[createOrGetUser] Profile incomplete, updating...');
+      await supabase.from('user_profiles')
+        .update({
+          display_name: info.nickname || '支付宝用户',
+          avatar_url: info.avatar || info.headimgurl || ''
+        })
+        .eq('id', existingProfile.id);
+    }
+
+    // Provider is bound to this user (or user is just logging in, not binding)
+    // Return the existing user - allow login
+    console.log('[createOrGetUser] Returning existing user:', existingProfile.id);
+    return { userId: existingProfile.id };
   }
 
-  const { data: link } = await supabase.auth.admin.generateLink({ type: 'magiclink', email: email || `${provider}_${providerId}@clawx.temp` });
+  // 2. If user is already logged in, bind provider to their existing account
+  if (supabaseUserId) {
+    console.log('[createOrGetUser] Binding provider to existing user:', supabaseUserId);
+    await supabase.from('user_profiles').update({ [field]: providerId }).eq('id', supabaseUserId);
+    return { userId: supabaseUserId };
+  }
+
+  // 3. New user: create account and bind provider
+  console.log('[createOrGetUser] Creating new user for provider:', provider);
+  const email = `${provider}_${providerId}@clawx.temp`;
+  const { data: newUser, error } = await supabase.auth.admin.createUser({
+    email, email_confirm: true, user_metadata: { display_name: info.nickname, avatar_url: info.avatar || info.headimgurl }
+  });
+  if (error || !newUser.user) {
+    console.error('[createOrGetUser] Failed to create user:', error);
+    return null;
+  }
+  const userId = newUser.user.id;
+
+  // 显式创建 profile（不依赖触发器），同时绑定 provider ID
+  // 直接在 INSERT 时设置 provider ID，避免竞态条件
+  const { error: profileError } = await supabase.from('user_profiles').insert({
+    id: userId,
+    display_name: info.nickname || '支付宝用户',
+    avatar_url: info.avatar || info.headimgurl || '',
+    subscription_tier: 'free',
+    [field]: providerId  // 直接在 INSERT 时绑定 provider ID
+  });
+  if (profileError) {
+    console.error('Profile creation error:', profileError);
+  }
+
+  const { data: link } = await supabase.auth.admin.generateLink({ type: 'magiclink', email });
+  console.log('[createOrGetUser] New user created:', userId);
   return { userId, sessionToken: link?.hashed_token };
 }
 
@@ -104,6 +157,18 @@ serve(async (req) => {
   // 暴露测试入口，方便你直接在浏览器验证页面是否正常
   if (url.searchParams.get('test_render') === 'success') return createSuccessRedirect();
   if (url.searchParams.get('test_render') === 'error') return createErrorRedirect('测试错误', '这是一个测试的错误页面');
+
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
+  }
 
   if (req.method !== 'GET') return createErrorRedirect('请求错误', '仅支持 GET 请求');
 
@@ -117,42 +182,120 @@ serve(async (req) => {
 
   const { token: loginToken, provider } = decoded;
 
+  console.log('[auth-callback] Processing callback for loginToken:', loginToken, 'provider:', provider);
+
   const { data: session } = await supabase.from('auth_sessions').select('status').eq('login_token', loginToken).single();
   if (session?.status === 'completed') return createSuccessRedirect();
 
   // 尝试获取锁
-  const { data: lock } = await supabase.from('auth_sessions').update({ processed_auth_code: code }).eq('login_token', loginToken).is('processed_auth_code', null).select();
+  const { data: lock, error: lockError } = await supabase.from('auth_sessions').update({ processed_auth_code: code }).eq('login_token', loginToken).is('processed_auth_code', null).select();
+
+  if (lockError) {
+    console.error('[auth-callback] Lock acquisition error:', lockError);
+  }
 
   if (!lock?.length) {
-    // 获取锁失败，可能是因为：
-    // 1. 登录正在处理中
-    // 2. 登录已经完成
-    // 需要再次检查状态
+    // 获取锁失败，检查状态
     const { data: currentSession } = await supabase.from('auth_sessions')
-      .select('status')
+      .select('status, processed_auth_code')
       .eq('login_token', loginToken)
       .single();
 
+    console.log('[auth-callback] Lock acquisition failed, current session status:', currentSession?.status);
+
+    // 如果已经是终态，直接返回结果
     if (currentSession?.status === 'completed') {
       return createSuccessRedirect();
     }
+    if (currentSession?.status === 'error') {
+      return createErrorRedirect('登录失败', '登录过程中发生错误，请重试');
+    }
 
-    return createErrorRedirect('重复请求', '该登录正在处理中，请稍后重试');
+    // status 是 pending，说明第一次回调正在处理中
+    // 轮询等待第一次回调完成（最多等待 10 秒）
+    console.log('[auth-callback] First callback still processing, waiting...');
+
+    for (let i = 0; i < 20; i++) {
+      await new Promise(resolve => setTimeout(resolve, 500)); // 等待 500ms
+
+      const { data: pollSession } = await supabase.from('auth_sessions')
+        .select('status')
+        .eq('login_token', loginToken)
+        .single();
+
+      console.log('[auth-callback] Poll attempt', i + 1, 'status:', pollSession?.status);
+
+      if (pollSession?.status === 'completed') {
+        console.log('[auth-callback] First callback completed, returning success');
+        return createSuccessRedirect();
+      }
+      if (pollSession?.status === 'error') {
+        console.log('[auth-callback] First callback failed, returning error');
+        return createErrorRedirect('登录失败', '登录过程中发生错误，请重试');
+      }
+    }
+
+    // 超时，返回处理中提示
+    console.log('[auth-callback] Timeout waiting for first callback');
+    return createErrorRedirect('处理中', '登录正在处理中，请返回应用查看结果');
   }
 
+  console.log('[auth-callback] Lock acquired successfully for loginToken:', loginToken);
+
   let userInfo = provider === 'alipay' ? await getAlipayUserInfo(code) : await getWechatUserInfo(code);
-  if (!userInfo) return createErrorRedirect('授权失败', '无法从授权方获取用户信息');
+  console.log('[auth-callback] User info retrieved:', userInfo ? 'success' : 'failed');
+
+  if (!userInfo) {
+    // 更新状态为 error，包含错误信息
+    const { error: updateError } = await supabase.from('auth_sessions')
+      .update({
+        status: 'error',
+        user_info: { error: '无法从授权方获取用户信息' }
+      })
+      .eq('login_token', loginToken);
+    if (updateError) {
+      console.error('[auth-callback] Failed to update status to error:', updateError);
+    }
+    return createErrorRedirect('授权失败', '无法从授权方获取用户信息');
+  }
+
+  // Get the supabase_user_id from auth_sessions (for binding to existing account)
+  const { data: sessionData } = await supabase.from('auth_sessions').select('supabase_user_id').eq('login_token', loginToken).single();
+  const supabaseUserId = sessionData?.supabase_user_id || undefined;
 
   const providerUserId = userInfo.user_id || userInfo.openid || '';
-  const result = await createOrGetUser(provider, providerUserId, userInfo);
-  if (!result) return createErrorRedirect('系统错误', '用户同步失败');
+  const result = await createOrGetUser(provider, providerUserId, userInfo, supabaseUserId);
+  console.log('[auth-callback] User created/found:', result ? 'success' : 'failed');
 
-  await supabase.from('auth_sessions').update({
+  if (!result) {
+    // 更新状态为 error，包含用户信息和错误原因
+    const { error: updateError } = await supabase.from('auth_sessions')
+      .update({
+        status: 'error',
+        user_info: {
+          ...userInfo,
+          error: '该账号已被其他用户绑定'
+        }
+      })
+      .eq('login_token', loginToken);
+    if (updateError) {
+      console.error('[auth-callback] Failed to update status to error:', updateError);
+    }
+    return createErrorRedirect('绑定失败', '该账号已被其他用户绑定');
+  }
+
+  // Build update object - only include session_token for new users (not for binding)
+  const updateData: Record<string, any> = {
     status: 'completed',
     supabase_user_id: result.userId,
-    session_token: result.sessionToken,
     completed_at: new Date().toISOString()
-  }).eq('login_token', loginToken);
+  };
+  if (result.sessionToken) {
+    updateData.session_token = result.sessionToken;
+  }
+
+  await supabase.from('auth_sessions').update(updateData).eq('login_token', loginToken);
+  console.log('[auth-callback] Session status updated to completed for user:', result.userId);
 
   return createSuccessRedirect();
 });

@@ -24,6 +24,7 @@ export interface Database {
           user_info: Json | null;
           supabase_user_id: string | null;
           session_token: string | null;
+          processed_auth_code: string | null;
           created_at: string;
           expires_at: string;
           completed_at: string | null;
@@ -37,6 +38,7 @@ export interface Database {
           user_info?: Json | null;
           supabase_user_id?: string | null;
           session_token?: string | null;
+          processed_auth_code?: string | null;
           created_at?: string;
           expires_at: string;
           completed_at?: string | null;
@@ -50,6 +52,7 @@ export interface Database {
           user_info?: Json | null;
           supabase_user_id?: string | null;
           session_token?: string | null;
+          processed_auth_code?: string | null;
           created_at?: string;
           expires_at?: string;
           completed_at?: string | null;
@@ -105,6 +108,94 @@ export interface Database {
           }
         ];
       };
+      api_keys: {
+        Row: {
+          id: string;
+          user_id: string;
+          key_hash: string;
+          key_prefix: string;
+          name: string | null;
+          last_used_at: string | null;
+          created_at: string;
+          expires_at: string | null;
+          is_active: boolean;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          key_hash: string;
+          key_prefix: string;
+          name?: string | null;
+          last_used_at?: string | null;
+          created_at?: string;
+          expires_at?: string | null;
+          is_active?: boolean;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          key_hash?: string;
+          key_prefix?: string;
+          name?: string | null;
+          last_used_at?: string | null;
+          created_at?: string;
+          expires_at?: string | null;
+          is_active?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'api_keys_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      usage_quotas: {
+        Row: {
+          id: string;
+          user_id: string;
+          total_tokens_quota: number;
+          tokens_used: number;
+          billing_cycle_start: string;
+          billing_cycle_end: string | null;
+          reset_policy: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          total_tokens_quota?: number;
+          tokens_used?: number;
+          billing_cycle_start?: string;
+          billing_cycle_end?: string | null;
+          reset_policy?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          total_tokens_quota?: number;
+          tokens_used?: number;
+          billing_cycle_start?: string;
+          billing_cycle_end?: string | null;
+          reset_policy?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'usage_quotas_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: true;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -123,3 +214,5 @@ export interface Database {
 
 export type AuthSession = Database['public']['Tables']['auth_sessions']['Row'];
 export type UserProfile = Database['public']['Tables']['user_profiles']['Row'];
+export type ApiKey = Database['public']['Tables']['api_keys']['Row'];
+export type UsageQuota = Database['public']['Tables']['usage_quotas']['Row'];

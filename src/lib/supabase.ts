@@ -28,7 +28,58 @@ export const supabase = supabaseUrl && supabaseAnonKey
   : null;
 
 /**
- * Subscribe to auth session changes
+ * Poll for auth session status as fallback
+ * This ensures we detect completion even if Realtime fails
+ */
+export function pollAuthSession(
+  loginToken: string,
+  onUpdate: (status: AuthSessionStatus) => void,
+  intervalMs = 1000,
+  maxAttempts = 300 // 5 minutes max
+): () => void {
+  let attempts = 0;
+  let stopped = false;
+
+  const poll = async () => {
+    if (stopped) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('auth_sessions')
+        .select('*')
+        .eq('login_token', loginToken)
+        .single();
+
+      if (data && !error) {
+        console.log('[Poll] Session status:', data.status);
+        onUpdate(data as AuthSessionStatus);
+
+        // Stop polling if completed, expired, or error
+        if (['completed', 'expired', 'error'].includes(data.status)) {
+          stopped = true;
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('[Poll] Error:', err);
+    }
+
+    attempts++;
+    if (attempts < maxAttempts && !stopped) {
+      setTimeout(poll, intervalMs);
+    }
+  };
+
+  poll();
+
+  return () => {
+    stopped = true;
+  };
+}
+
+/**
+ * Subscribe to auth session changes using Realtime + Polling
+ * This dual approach ensures reliability even if WebSocket fails
  */
 export function subscribeToAuthSession(
   loginToken: string,
@@ -39,8 +90,36 @@ export function subscribeToAuthSession(
     return () => {};
   }
 
-  console.log('[Supabase] Setting up realtime subscription for token:', loginToken?.substring(0, 8) + '...');
+  console.log('[Supabase] Setting up realtime subscription + polling for token:', loginToken?.substring(0, 8) + '...');
 
+  let isCompleted = false;
+
+  // Wrapper to prevent duplicate updates after completion
+  const handleUpdate = (status: AuthSessionStatus) => {
+    if (isCompleted) return;
+    if (['completed', 'expired', 'error'].includes(status.status)) {
+      isCompleted = true;
+    }
+    onUpdate(status);
+  };
+
+  // 1. First, immediately check current status
+  supabase
+    .from('auth_sessions')
+    .select('*')
+    .eq('login_token', loginToken)
+    .single()
+    .then(({ data }) => {
+      if (data) {
+        console.log('[Supabase] Initial status check:', data.status);
+        if (['completed', 'expired', 'error'].includes(data.status)) {
+          handleUpdate(data as AuthSessionStatus);
+          return; // Already done, no need to subscribe
+        }
+      }
+    });
+
+  // 2. Set up Realtime subscription
   const channel = supabase
     .channel(`auth-session-${loginToken}`)
     .on(
@@ -53,16 +132,21 @@ export function subscribeToAuthSession(
       },
       (payload) => {
         console.log('[Supabase] Received realtime update:', payload);
-        onUpdate(payload.new as AuthSessionStatus);
+        handleUpdate(payload.new as AuthSessionStatus);
       }
     )
     .subscribe((status) => {
       console.log('[Supabase] Subscription status:', status);
     });
 
+  // 3. Start polling as backup
+  const stopPolling = pollAuthSession(loginToken, handleUpdate);
+
+  // Return cleanup function that stops both Realtime and polling
   return () => {
-    console.log('[Supabase] Unsubscribing from channel');
+    console.log('[Supabase] Unsubscribing from channel and stopping polling');
     supabase.removeChannel(channel);
+    stopPolling();
   };
 }
 
@@ -88,8 +172,10 @@ export interface AuthSessionStatus {
 
 /**
  * Initialize auth session
+ * @param provider - OAuth provider (wechat or alipay)
+ * @param userId - Optional current user ID for binding provider to existing account
  */
-export async function initAuthSession(provider: 'wechat' | 'alipay'): Promise<{
+export async function initAuthSession(provider: 'wechat' | 'alipay', userId?: string): Promise<{
   loginToken: string;
   oauthUrl: string;
 } | null> {
@@ -104,7 +190,7 @@ export async function initAuthSession(provider: 'wechat' | 'alipay'): Promise<{
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ provider }),
+      body: JSON.stringify({ provider, userId }),
     });
 
     if (!response.ok) {

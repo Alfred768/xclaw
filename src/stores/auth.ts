@@ -14,6 +14,9 @@ export interface AuthUser {
   displayName?: string;
   avatarUrl?: string;
   subscriptionTier: 'free' | 'pro' | 'enterprise';
+  // Binding information
+  alipayUserId?: string | null;
+  wechatOpenid?: string | null;
 }
 
 interface AuthState {
@@ -210,7 +213,10 @@ export const useAuthStore = create<AuthState>()(
             email: result.user.email,
             displayName: result.user.display_name,
             avatarUrl: result.user.avatar_url,
-            subscriptionTier: 'free',
+            subscriptionTier: result.user.subscription_tier || 'free',
+            // Store binding information
+            alipayUserId: result.user.alipay_user_id,
+            wechatOpenid: result.user.wechat_openid,
           };
 
           set({
