@@ -2,9 +2,9 @@
  * Profile Section
  * Displays and allows editing of basic profile information
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { User, Copy, Check, Save } from 'lucide-react';
+import { User, Copy, Check, Save, Upload } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,12 +15,13 @@ import { toast } from 'sonner';
 
 export function ProfileSection() {
   const { t } = useTranslation('account');
-  const { profile, updateProfile, isLoading } = useAccountStore();
+  const { profile, updateProfile, uploadAvatar, isLoading } = useAccountStore();
   const { user } = useAuthStore();
 
   const [displayName, setDisplayName] = useState(profile?.display_name || '');
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync displayName with profile when it loads
   useEffect(() => {
@@ -41,6 +42,35 @@ export function ProfileSection() {
       await navigator.clipboard.writeText(user.id);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Invalid file type. Only JPEG, PNG, and WebP are allowed.');
+      return;
+    }
+
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('File size must be less than 2MB.');
+      return;
+    }
+
+    const result = await uploadAvatar(file);
+    if (result) {
+      toast.success(t('profile.avatarUpdated', { defaultValue: 'Avatar updated successfully' }));
+    } else {
+      toast.error(t('profile.avatarUploadFailed', { defaultValue: 'Failed to upload avatar' }));
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -77,7 +107,23 @@ export function ProfileSection() {
           </div>
           <div>
             <p className="text-sm font-medium">{t('profile.avatar')}</p>
-            <p className="text-xs text-muted-foreground">{t('profile.changeAvatar')}</p>
+            <p className="text-xs text-muted-foreground mb-2">{t('profile.changeAvatar')}</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              {t('profile.upload', { defaultValue: 'Upload' })}
+            </Button>
           </div>
         </div>
 

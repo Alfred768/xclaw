@@ -102,3 +102,6 @@ verify_jwt = false
 
 [functions.get-session]
 verify_jwt = false
+
+[functions.upload-avatar]
+verify_jwt = false

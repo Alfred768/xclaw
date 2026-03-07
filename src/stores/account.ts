@@ -18,6 +18,7 @@ interface AccountState {
   // Profile Actions
   fetchProfile: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  uploadAvatar: (file: File) => Promise<string | null>;
 
   // Quota Actions
   fetchQuota: () => Promise<void>;
@@ -56,12 +57,22 @@ export const useAccountStore = create<AccountState>()(
             return;
           }
 
+          // Get avatar URL - use from auth store, or construct from Storage
+          let avatarUrl = authUser.avatarUrl || '';
+          if (!avatarUrl) {
+            // Try to construct public URL from Storage (fixed filename: {userId}/avatar)
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            if (supabaseUrl) {
+              avatarUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${authUser.id}/avatar`;
+            }
+          }
+
           // Build profile from auth store data
           // This avoids RLS issues since get-session already has the profile data
           const profile: UserProfile = {
             id: authUser.id,
             display_name: authUser.displayName || 'User',
-            avatar_url: authUser.avatarUrl || '',
+            avatar_url: avatarUrl,
             subscription_tier: authUser.subscriptionTier || 'free',
             alipay_user_id: authUser.alipayUserId || null,
             wechat_openid: authUser.wechatOpenid || null,
@@ -106,6 +117,67 @@ export const useAccountStore = create<AccountState>()(
         } catch (error) {
           console.error('Error updating profile:', error);
           set({ isLoading: false });
+        }
+      },
+
+      uploadAvatar: async (file: File): Promise<string | null> => {
+        const { profile } = get();
+        const accessToken = useAuthStore.getState().accessToken;
+        if (!profile) return null;
+
+        set({ isLoading: true });
+
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+
+          const headers: Record<string, string> = {
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          };
+
+          // Add Authorization header if we have a token
+          if (accessToken) {
+            headers['Authorization'] = `Bearer ${accessToken}`;
+          }
+
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-avatar?user_id=${profile.id}`,
+            {
+              method: 'POST',
+              headers,
+              body: formData,
+            }
+          );
+
+          if (!response.ok) {
+            const error = await response.json();
+            console.error('Error uploading avatar:', error);
+            set({ isLoading: false });
+            return null;
+          }
+
+          const result = await response.json();
+
+          // Update local profile state
+          set({
+            profile: { ...profile, avatar_url: result.avatarUrl },
+            isLoading: false,
+          });
+
+          // Sync with auth store
+          const authUser = useAuthStore.getState().user;
+          if (authUser) {
+            useAuthStore.getState().setUser({
+              ...authUser,
+              avatarUrl: result.avatarUrl,
+            });
+          }
+
+          return result.avatarUrl;
+        } catch (error) {
+          console.error('Error uploading avatar:', error);
+          set({ isLoading: false });
+          return null;
         }
       },
 
