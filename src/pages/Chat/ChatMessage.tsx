@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { RawMessage, AttachedFileMeta } from '@/stores/chat';
 import { extractText, extractThinking, extractImages, extractToolUse, formatTimestamp } from './message-utils';
+import { useAccountStore } from '@/stores/account';
 
 interface ChatMessageProps {
   message: RawMessage;
@@ -45,6 +46,10 @@ export const ChatMessage = memo(function ChatMessage({
 
   const attachedFiles = message._attachedFiles || [];
 
+  // Get user avatar from account store
+  const { profile } = useAccountStore();
+  const userAvatarUrl = profile?.avatar_url;
+
   // Never render tool result messages in chat UI
   if (isToolResult) return null;
 
@@ -62,13 +67,25 @@ export const ChatMessage = memo(function ChatMessage({
       {/* Avatar */}
       <div
         className={cn(
-          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-1',
+          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-1 overflow-hidden',
           isUser
-            ? 'bg-primary text-primary-foreground'
+            ? userAvatarUrl ? '' : 'bg-primary text-primary-foreground'
             : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white',
         )}
       >
-        {isUser ? <User className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+        {isUser ? (
+          userAvatarUrl ? (
+            <img
+              src={userAvatarUrl}
+              alt="User avatar"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <User className="h-4 w-4" />
+          )
+        ) : (
+          <Sparkles className="h-4 w-4" />
+        )}
       </div>
 
       {/* Content */}
