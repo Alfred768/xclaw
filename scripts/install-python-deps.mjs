@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Install Python dependencies for ClawX
+ * Install Python dependencies for XClaw
  * This script runs after pnpm install to set up required Python packages
  * Installs packages to the user's Python environment (pip3 --user)
  */
@@ -28,7 +28,7 @@ function runCommand(cmd, args) {
 }
 
 async function main() {
-  console.log('Installing Python dependencies for ClawX...');
+  console.log('Installing Python dependencies for XClaw...');
 
   try {
     // Install PyPDF2 to user site-packages using pip3

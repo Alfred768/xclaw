@@ -57,12 +57,12 @@ export function createTray(mainWindow: BrowserWindow): Tray {
   tray = new Tray(icon);
   
   // Set tooltip
-  tray.setToolTip('ClawX - AI Assistant');
+  tray.setToolTip('XClaw - AI Assistant');
   
   // Create context menu
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Show ClawX',
+      label: 'Show XClaw',
       click: () => {
         mainWindow.show();
         mainWindow.focus();
@@ -123,7 +123,7 @@ export function createTray(mainWindow: BrowserWindow): Tray {
       type: 'separator',
     },
     {
-      label: 'Quit ClawX',
+      label: 'Quit XClaw',
       click: () => {
         app.quit();
       },
@@ -156,7 +156,7 @@ export function createTray(mainWindow: BrowserWindow): Tray {
  */
 export function updateTrayStatus(status: string): void {
   if (tray) {
-    tray.setToolTip(`ClawX - ${status}`);
+    tray.setToolTip(`XClaw - ${status}`);
   }
 }
 

@@ -64,7 +64,7 @@
     "copyKey": "Copy Key",
     "keyCopied": "API key copied to clipboard",
     "noKeys": "No API keys yet",
-    "noKeysDesc": "Create an API key to access ClawX programmatically"
+    "noKeysDesc": "Create an API key to access XClaw programmatically"
   },
   "errors": {
     "fetchFailed": "Failed to load account data",

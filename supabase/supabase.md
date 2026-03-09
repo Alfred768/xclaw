@@ -6,37 +6,37 @@ he WeChat/Alipay QR code login implementation is now
   Files Created                                   
                                                         
   1. Supabase Configuration:                       
-  - /Users/wugaoyi/Learning/Project/ClawX/src/lib/supaba
+  - /Users/wugaoyi/Learning/Project/XClaw/src/lib/supaba
   se.ts - Supabase client configuration with Realtime   
   subscriptions and auth session management             
-  - /Users/wugaoyi/Learning/Project/ClawX/src/stores/aut
+  - /Users/wugaoyi/Learning/Project/XClaw/src/stores/aut
   h.ts - Zustand auth store with login/logout methods
-  - /Users/wugaoyi/Learning/Project/ClawX/src/types/data
+  - /Users/wugaoyi/Learning/Project/XClaw/src/types/data
   base.ts - TypeScript types for Supabase database
 
   2. Supabase Edge Functions:
-  - /Users/wugaoyi/Learning/Project/ClawX/supabase/confi
+  - /Users/wugaoyi/Learning/Project/XClaw/supabase/confi
   g.toml - Supabase project configuration
-  - /Users/wugaoyi/Learning/Project/ClawX/supabase/migra
+  - /Users/wugaoyi/Learning/Project/XClaw/supabase/migra
   tions/20240304_auth_schema.sql - Database schema and
   migration
-  - /Users/wugaoyi/Learning/Project/ClawX/supabase/funct
+  - /Users/wugaoyi/Learning/Project/XClaw/supabase/funct
   ions/_shared/cors.ts - CORS helper
-  - /Users/wugaoyi/Learning/Project/ClawX/supabase/funct
+  - /Users/wugaoyi/Learning/Project/XClaw/supabase/funct
   ions/auth-init/index.ts - OAuth URL generation
-  - /Users/wugaoyi/Learning/Project/ClawX/supabase/funct
+  - /Users/wugaoyi/Learning/Project/XClaw/supabase/funct
   ions/auth-callback/index.ts - OAuth callback handling
-  - /Users/wugaoyi/Learning/Project/ClawX/supabase/funct
+  - /Users/wugaoyi/Learning/Project/XClaw/supabase/funct
   ions/get-session/index.ts - Session token retrieval
 
   3. Frontend Components:
-  - /Users/wugaoyi/Learning/Project/ClawX/src/pages/Setu
+  - /Users/wugaoyi/Learning/Project/XClaw/src/pages/Setu
   p/AuthContent.tsx - QR code login component
 
   Files Modified
 
   1. Setup Page:
-  - /Users/wugaoyi/Learning/Project/ClawX/src/pages/Setu
+  - /Users/wugaoyi/Learning/Project/XClaw/src/pages/Setu
   p/index.tsx:
     - Added AUTH step between WELCOME and RUNTIME
     - Updated STEP enum (now has 7 steps)
@@ -46,19 +46,19 @@ he WeChat/Alipay QR code login implementation is now
   login)
 
   2. Dependencies (already updated):
-  - /Users/wugaoyi/Learning/Project/ClawX/package.json -
+  - /Users/wugaoyi/Learning/Project/XClaw/package.json -
    Added @supabase/supabase-js and qrcode.react
 
   3. Environment Variables (already updated):
-  - /Users/wugaoyi/Learning/Project/ClawX/.env.example -
+  - /Users/wugaoyi/Learning/Project/XClaw/.env.example -
    Added VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
 
   4. i18n Translations (already updated):
-  - /Users/wugaoyi/Learning/Project/ClawX/src/i18n/local
+  - /Users/wugaoyi/Learning/Project/XClaw/src/i18n/local
   es/en/setup.json
-  - /Users/wugaoyi/Learning/Project/ClawX/src/i18n/local
+  - /Users/wugaoyi/Learning/Project/XClaw/src/i18n/local
   es/zh/setup.json
-  - /Users/wugaoyi/Learning/Project/ClawX/src/i18n/local
+  - /Users/wugaoyi/Learning/Project/XClaw/src/i18n/local
   es/ja/setup.json
 
   Setup Flow
@@ -94,7 +94,7 @@ he WeChat/Alipay QR code login implementation is now
     - Run the migration to create database tables
     - Deploy the Edge Functions
     - Add environment variables to Supabase
-  4. Configure ClawX:
+  4. Configure XClaw:
     - Create .env file from .env.example
     - Add Supabase URL and anon key
 
@@ -181,7 +181,7 @@ he WeChat/Alipay QR code login implementation is now
     - Deploy Edge Functions
     - Add environment variables (WECHAT_APP_ID,
   WECHAT_APP_SECRET, ALIPAY_APP_ID, ALIPAY_PRIVATE_KEY)
-  4. ClawX Configuration: Create .env file with your
+  4. XClaw Configuration: Create .env file with your
   Supabase URL and anon key
 
   ⏺ 支付宝登录整体流程总结                                    

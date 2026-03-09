@@ -1,9 +1,9 @@
 
 <p align="center">
-  <img src="src/assets/logo.svg" width="128" height="128" alt="ClawX Logo" />
+  <img src="src/assets/logo.svg" width="128" height="128" alt="XClaw Logo" />
 </p>
 
-<h1 align="center">ClawX</h1>
+<h1 align="center">XClaw</h1>
 
 <p align="center">
   <strong>OpenClaw AI 智能体的桌面客户端</strong>
@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="#功能特性">功能特性</a> •
-  <a href="#为什么选择-clawx">为什么选择 ClawX</a> •
+  <a href="#为什么选择-clawx">为什么选择 XClaw</a> •
   <a href="#快速上手">快速上手</a> •
   <a href="#系统架构">系统架构</a> •
   <a href="#开发指南">开发指南</a> •
@@ -25,7 +25,7 @@
   <a href="https://discord.com/invite/84Kex3GGAh" target="_blank">
   <img src="https://img.shields.io/discord/1399603591471435907?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb" alt="chat on Discord" />
   </a>
-  <img src="https://img.shields.io/github/downloads/ValueCell-ai/ClawX/total?color=%23027DEB" alt="Downloads" />
+  <img src="https://img.shields.io/github/downloads/ValueCell-ai/XClaw/total?color=%23027DEB" alt="Downloads" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License" />
 </p>
 
@@ -37,11 +37,11 @@
 
 ## 概述
 
-**ClawX** 是连接强大 AI 智能体与普通用户之间的桥梁。基于 [OpenClaw](https://github.com/OpenClaw) 构建，它将命令行式的 AI 编排转变为易用、美观的桌面体验——无需使用终端。
+**XClaw** 是连接强大 AI 智能体与普通用户之间的桥梁。基于 [OpenClaw](https://github.com/OpenClaw) 构建，它将命令行式的 AI 编排转变为易用、美观的桌面体验——无需使用终端。
 
-无论是自动化工作流、连接通讯软件，还是调度智能定时任务，ClawX 都能提供高效易用的图形界面，帮助你充分发挥 AI 智能体的能力。
+无论是自动化工作流、连接通讯软件，还是调度智能定时任务，XClaw 都能提供高效易用的图形界面，帮助你充分发挥 AI 智能体的能力。
 
-ClawX 预置了最佳实践的模型供应商配置，原生支持 Windows 平台以及多语言设置。当然，你也可以通过 **设置 → 高级 → 开发者模式** 来进行精细的高级配置。
+XClaw 预置了最佳实践的模型供应商配置，原生支持 Windows 平台以及多语言设置。当然，你也可以通过 **设置 → 高级 → 开发者模式** 来进行精细的高级配置。
 
 ---
 
@@ -73,11 +73,11 @@ ClawX 预置了最佳实践的模型供应商配置，原生支持 Windows 平�
 
 ---
 
-## 为什么选择 ClawX
+## 为什么选择 XClaw
 
-构建 AI 智能体不应该需要精通命令行。ClawX 的设计理念很简单：**强大的技术值得拥有一个尊重用户时间的界面。**
+构建 AI 智能体不应该需要精通命令行。XClaw 的设计理念很简单：**强大的技术值得拥有一个尊重用户时间的界面。**
 
-| 痛点 | ClawX 解决方案 |
+| 痛点 | XClaw 解决方案 |
 |------|----------------|
 | 复杂的命令行配置 | 一键安装，配合引导式设置向导 |
 | 手动编辑配置文件 | 可视化设置界面，实时校验 |
@@ -87,7 +87,7 @@ ClawX 预置了最佳实践的模型供应商配置，原生支持 Windows 平�
 
 ### 内置 OpenClaw 核心
 
-ClawX 直接基于官方 **OpenClaw** 核心构建。无需单独安装，我们将运行时嵌入应用内部，提供开箱即用的无缝体验。
+XClaw 直接基于官方 **OpenClaw** 核心构建。无需单独安装，我们将运行时嵌入应用内部，提供开箱即用的无缝体验。
 
 我们致力于与上游 OpenClaw 项目保持严格同步，确保你始终可以使用官方发布的最新功能、稳定性改进和生态兼容性。
 
@@ -114,7 +114,7 @@ ClawX 直接基于官方 **OpenClaw** 核心构建。无需单独安装，我们
 连接多个 AI 供应商（OpenAI、Anthropic 等），凭证安全存储在系统原生密钥链中。
 
 ### 🌙 自适应主题
-支持浅色模式、深色模式或跟随系统主题。ClawX 自动适应你的偏好设置。
+支持浅色模式、深色模式或跟随系统主题。XClaw 自动适应你的偏好设置。
 
 ---
 
@@ -130,14 +130,14 @@ ClawX 直接基于官方 **OpenClaw** 核心构建。无需单独安装，我们
 
 #### 预构建版本（推荐）
 
-从 [Releases](https://github.com/ValueCell-ai/ClawX/releases) 页面下载适用于你平台的最新版本。
+从 [Releases](https://github.com/ValueCell-ai/XClaw/releases) 页面下载适用于你平台的最新版本。
 
 #### 从源码构建
 
 ```bash
 # 克隆仓库
-git clone https://github.com/ValueCell-ai/ClawX.git
-cd ClawX
+git clone https://github.com/ValueCell-ai/XClaw.git
+cd XClaw
 
 # 初始化项目
 pnpm run init
@@ -148,7 +148,7 @@ pnpm dev
 
 ### 首次启动
 
-首次启动 ClawX 时，**设置向导** 将引导你完成以下步骤：
+首次启动 XClaw 时，**设置向导** 将引导你完成以下步骤：
 
 1. **语言与区域** – 配置你的首选语言和地区
 2. **AI 供应商** – 输入所支持供应商的 API 密钥
@@ -159,11 +159,11 @@ pnpm dev
 
 ## 系统架构
 
-ClawX 采用 **双进程架构**，将 UI 层与 AI 运行时操作分离：
+XClaw 采用 **双进程架构**，将 UI 层与 AI 运行时操作分离：
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        ClawX 桌面应用                             │
+│                        XClaw 桌面应用                             │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐  │
 │  │              Electron 主进程                                 │  │
@@ -231,7 +231,7 @@ ClawX 采用 **双进程架构**，将 UI 层与 AI 运行时操作分离：
 ### 项目结构
 
 ```
-ClawX/
+XClaw/
 ├── electron/              # Electron 主进程
 │   ├── main/             # 应用入口、窗口管理
 │   ├── gateway/          # OpenClaw 网关进程管理
@@ -301,7 +301,7 @@ pnpm package:linux        # 为 Linux 打包
 
 ## 参与贡献
 
-我们欢迎社区的各种贡献！无论是修复 Bug、开发新功能、改进文档还是翻译——每一份贡献都让 ClawX 变得更好。
+我们欢迎社区的各种贡献！无论是修复 Bug、开发新功能、改进文档还是翻译——每一份贡献都让 XClaw 变得更好。
 
 ### 如何贡献
 
@@ -322,7 +322,7 @@ pnpm package:linux        # 为 Linux 打包
 
 ## 致谢
 
-ClawX 构建于以下优秀的开源项目之上：
+XClaw 构建于以下优秀的开源项目之上：
 
 - [OpenClaw](https://github.com/OpenClaw) – AI 智能体运行时
 - [Electron](https://www.electronjs.org/) – 跨平台桌面框架
@@ -344,7 +344,7 @@ ClawX 构建于以下优秀的开源项目之上：
 
 ## 许可证
 
-ClawX 基于 [MIT 许可证](LICENSE) 发布。你可以自由地使用、修改和分发本软件。
+XClaw 基于 [MIT 许可证](LICENSE) 发布。你可以自由地使用、修改和分发本软件。
 
 ---
 

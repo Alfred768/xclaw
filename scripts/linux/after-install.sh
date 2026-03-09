@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Post-installation script for ClawX on Linux
+# Post-installation script for XClaw on Linux
 
 set -e
 
@@ -15,8 +15,8 @@ if command -v gtk-update-icon-cache &> /dev/null; then
 fi
 
 # Create symbolic link for CLI access (optional)
-if [ -x /opt/ClawX/clawx ]; then
-    ln -sf /opt/ClawX/clawx /usr/local/bin/clawx 2>/dev/null || true
+if [ -x /opt/XClaw/clawx ]; then
+    ln -sf /opt/XClaw/clawx /usr/local/bin/clawx 2>/dev/null || true
 fi
 
-echo "ClawX has been installed successfully."
+echo "XClaw has been installed successfully."

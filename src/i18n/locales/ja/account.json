@@ -64,7 +64,7 @@
     "copyKey": "キーをコピー",
     "keyCopied": "APIキーをクリップボードにコピーしました",
     "noKeys": "APIキーがありません",
-    "noKeysDesc": "ClawXへのプログラムアクセス用にAPIキーを作成してください"
+    "noKeysDesc": "XClawへのプログラムアクセス用にAPIキーを作成してください"
   },
   "errors": {
     "fetchFailed": "アカウントデータの読み込みに失敗しました",

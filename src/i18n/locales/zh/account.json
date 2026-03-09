@@ -64,7 +64,7 @@
     "copyKey": "复制密钥",
     "keyCopied": "API 密钥已复制到剪贴板",
     "noKeys": "暂无 API 密钥",
-    "noKeysDesc": "创建 API 密钥以程序化访问 ClawX"
+    "noKeysDesc": "创建 API 密钥以程序化访问 XClaw"
   },
   "errors": {
     "fetchFailed": "加载账户数据失败",

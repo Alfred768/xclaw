@@ -103,7 +103,7 @@ function createWindow(): BrowserWindow {
 async function initialize(): Promise<void> {
   // Initialize logger first
   logger.init();
-  logger.info('=== ClawX Application Starting ===');
+  logger.info('=== XClaw Application Starting ===');
   logger.debug(
     `Runtime: platform=${process.platform}/${process.arch}, electron=${process.versions.electron}, node=${process.versions.node}, packaged=${app.isPackaged}`
   );
@@ -125,7 +125,7 @@ async function initialize(): Promise<void> {
     { urls: ['https://openrouter.ai/*'] },
     (details, callback) => {
       details.requestHeaders['HTTP-Referer'] = 'https://claw-x.com';
-      details.requestHeaders['X-Title'] = 'ClawX';
+      details.requestHeaders['X-Title'] = 'XClaw';
       callback({ requestHeaders: details.requestHeaders });
     },
   );
