@@ -209,6 +209,8 @@ export async function initAuthSession(provider: 'wechat' | 'alipay', userId?: st
  */
 export async function getSessionToken(loginToken: string): Promise<{
   sessionToken: string;
+  refreshToken?: string;
+  expiresIn?: string;
   user: {
     id: string;
     email?: string;

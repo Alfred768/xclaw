@@ -19,6 +19,7 @@ import {
   Newspaper,
   BarChart2,
   User,
+  CreditCard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore } from '@/stores/settings';
@@ -96,6 +97,7 @@ export function Sidebar() {
     { to: '/dashboard', icon: <Home className="h-5 w-5" />, label: t('sidebar.dashboard') },
     { to: '/todo', icon: <ListTodo className="h-5 w-5" />, label: t('sidebar.todo') },
     { to: '/briefing', icon: <Newspaper className="h-5 w-5" />, label: t('sidebar.briefing') },
+    { to: '/subscription', icon: <CreditCard className="h-5 w-5" />, label: t('sidebar.subscription') },
     { to: '/usage', icon: <BarChart2 className="h-5 w-5" />, label: t('sidebar.usage') },
     { to: '/account', icon: <User className="h-5 w-5" />, label: t('sidebar.account') },
     { to: '/settings', icon: <Settings className="h-5 w-5" />, label: t('sidebar.settings') },

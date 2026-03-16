@@ -13,7 +13,10 @@ export interface AuthUser {
   email?: string;
   displayName?: string;
   avatarUrl?: string;
-  subscriptionTier: 'free' | 'pro' | 'enterprise';
+  subscriptionTier: 'free' | 'monthly' | 'yearly' | 'pro' | 'enterprise';
+  isTrial?: boolean;
+  trialEndsAt?: string | null;
+  subscriptionEndsAt?: string | null;
   // Binding information
   alipayUserId?: string | null;
   wechatOpenid?: string | null;
@@ -208,15 +211,52 @@ export const useAuthStore = create<AuthState>()(
             return null;
           }
 
+          // 🔥 CRITICAL: Set the session in Supabase client so it can be used for API calls
+          if (supabase && result.refreshToken) {
+            console.log('[completeAuthFlow] Setting Supabase session...');
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: result.sessionToken,
+              refresh_token: result.refreshToken,
+            });
+            if (sessionError) {
+              console.error('[completeAuthFlow] Failed to set session:', sessionError);
+            } else {
+              console.log('[completeAuthFlow] Supabase session set successfully');
+            }
+          } else {
+            console.warn('[completeAuthFlow] No refreshToken available, session may not persist');
+          }
+
+          // Cast result to include all fields from get-session
+          const sessionResult = result as {
+            sessionToken: string;
+            refreshToken?: string;
+            user: {
+              id: string;
+              email?: string;
+              display_name?: string;
+              avatar_url?: string;
+              subscription_tier?: string;
+              is_trial?: boolean;
+              trial_ends_at?: string | null;
+              subscription_ends_at?: string | null;
+              alipay_user_id?: string;
+              wechat_openid?: string;
+            };
+          };
+
           const user: AuthUser = {
-            id: result.user.id,
-            email: result.user.email,
-            displayName: result.user.display_name,
-            avatarUrl: result.user.avatar_url,
-            subscriptionTier: result.user.subscription_tier || 'free',
+            id: sessionResult.user.id,
+            email: sessionResult.user.email,
+            displayName: sessionResult.user.display_name,
+            avatarUrl: sessionResult.user.avatar_url,
+            subscriptionTier: (sessionResult.user.subscription_tier as AuthUser['subscriptionTier']) || 'free',
+            isTrial: sessionResult.user.is_trial,
+            trialEndsAt: sessionResult.user.trial_ends_at,
+            subscriptionEndsAt: sessionResult.user.subscription_ends_at,
             // Store binding information
-            alipayUserId: result.user.alipay_user_id,
-            wechatOpenid: result.user.wechat_openid,
+            alipayUserId: sessionResult.user.alipay_user_id,
+            wechatOpenid: sessionResult.user.wechat_openid,
           };
 
           set({

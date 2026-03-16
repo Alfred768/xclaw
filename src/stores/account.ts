@@ -74,8 +74,12 @@ export const useAccountStore = create<AccountState>()(
             display_name: authUser.displayName || 'User',
             avatar_url: avatarUrl,
             subscription_tier: authUser.subscriptionTier || 'free',
+            is_trial: authUser.isTrial ?? false,
+            trial_ends_at: authUser.trialEndsAt || null,
+            subscription_ends_at: authUser.subscriptionEndsAt || null,
             alipay_user_id: authUser.alipayUserId || null,
             wechat_openid: authUser.wechatOpenid || null,
+            yunwu_api_key: null, // Not stored in auth store for security
             preferences: null,
             created_at: new Date().toISOString(),
           };

@@ -105,3 +105,15 @@ verify_jwt = false
 
 [functions.upload-avatar]
 verify_jwt = false
+
+[functions.zpay-create]
+verify_jwt = false
+
+[functions.zpay-notify]
+verify_jwt = false
+
+[functions.zpay-status]
+verify_jwt = false
+
+[functions.yunwu-token-status]
+verify_jwt = false

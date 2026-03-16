@@ -74,7 +74,11 @@ export interface Database {
           avatar_url: string | null;
           wechat_openid: string | null;
           alipay_user_id: string | null;
-          subscription_tier: 'free' | 'pro' | 'enterprise';
+          subscription_tier: 'free' | 'monthly' | 'yearly' | 'pro' | 'enterprise';
+          is_trial: boolean;
+          trial_ends_at: string | null;
+          subscription_ends_at: string | null;
+          yunwu_api_key: string | null;
           preferences: Json | null;
           created_at: string;
         };
@@ -84,7 +88,11 @@ export interface Database {
           avatar_url?: string | null;
           wechat_openid?: string | null;
           alipay_user_id?: string | null;
-          subscription_tier?: 'free' | 'pro' | 'enterprise';
+          subscription_tier?: 'free' | 'monthly' | 'yearly' | 'pro' | 'enterprise';
+          is_trial?: boolean;
+          trial_ends_at?: string | null;
+          subscription_ends_at?: string | null;
+          yunwu_api_key?: string | null;
           preferences?: Json | null;
           created_at?: string;
         };
@@ -94,7 +102,11 @@ export interface Database {
           avatar_url?: string | null;
           wechat_openid?: string | null;
           alipay_user_id?: string | null;
-          subscription_tier?: 'free' | 'pro' | 'enterprise';
+          subscription_tier?: 'free' | 'monthly' | 'yearly' | 'pro' | 'enterprise';
+          is_trial?: boolean;
+          trial_ends_at?: string | null;
+          subscription_ends_at?: string | null;
+          yunwu_api_key?: string | null;
           preferences?: Json | null;
           created_at?: string;
         };
@@ -196,6 +208,65 @@ export interface Database {
           }
         ];
       };
+      zpay_transactions: {
+        Row: {
+          id: string;
+          user_id: string;
+          out_trade_no: string;
+          trade_no: string | null;
+          amount: number;
+          payment_type: 'alipay' | 'wxpay';
+          product_name: string;
+          status: 'pending' | 'paid' | 'failed';
+          processed_trade_no: string | null;
+          metadata: Json | null;
+          callback_data: Json | null;
+          created_at: string;
+          paid_at: string | null;
+          expires_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          out_trade_no: string;
+          trade_no?: string | null;
+          amount: number;
+          payment_type: 'alipay' | 'wxpay';
+          product_name: string;
+          status?: 'pending' | 'paid' | 'failed';
+          processed_trade_no?: string | null;
+          metadata?: Json | null;
+          callback_data?: Json | null;
+          created_at?: string;
+          paid_at?: string | null;
+          expires_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          out_trade_no?: string;
+          trade_no?: string | null;
+          amount?: number;
+          payment_type?: 'alipay' | 'wxpay';
+          product_name?: string;
+          status?: 'pending' | 'paid' | 'failed';
+          processed_trade_no?: string | null;
+          metadata?: Json | null;
+          callback_data?: Json | null;
+          created_at?: string;
+          paid_at?: string | null;
+          expires_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'zpay_transactions_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -216,3 +287,8 @@ export type AuthSession = Database['public']['Tables']['auth_sessions']['Row'];
 export type UserProfile = Database['public']['Tables']['user_profiles']['Row'];
 export type ApiKey = Database['public']['Tables']['api_keys']['Row'];
 export type UsageQuota = Database['public']['Tables']['usage_quotas']['Row'];
+
+// ZPay Transaction Types
+export type ZpayTransaction = Database['public']['Tables']['zpay_transactions']['Row'];
+export type ZpayTransactionInsert = Database['public']['Tables']['zpay_transactions']['Insert'];
+export type ZpayTransactionUpdate = Database['public']['Tables']['zpay_transactions']['Update'];

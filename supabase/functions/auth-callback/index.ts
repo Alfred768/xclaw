@@ -108,17 +108,51 @@ async function createOrGetUser(provider: string, providerId: string, info: any, 
         .eq('id', existingProfile.id);
     }
 
+    // Get the actual user email from auth.users to generate correct magiclink
+    // generateLink requires email, not userId
+    console.log('[createOrGetUser] Getting user email for userId:', existingProfile.id);
+    const { data: authUser, error: userError } = await supabase.auth.admin.getUserById(existingProfile.id);
+
+    if (userError) {
+      console.error('[createOrGetUser] Failed to get user:', userError);
+    }
+
+    let sessionToken = null;
+    if (authUser?.user?.email) {
+      console.log('[createOrGetUser] Generating magiclink for email:', authUser.user.email);
+      const { data: link, error: linkError } = await supabase.auth.admin.generateLink({
+        type: 'magiclink',
+        email: authUser.user.email
+      });
+      if (linkError) {
+        console.error('[createOrGetUser] Failed to generate link:', linkError);
+      }
+      sessionToken = link?.properties?.hashed_token;
+      console.log('[createOrGetUser] Generated sessionToken:', sessionToken ? 'success' : 'failed');
+    } else {
+      console.error('[createOrGetUser] No email found for user:', existingProfile.id);
+    }
+
     // Provider is bound to this user (or user is just logging in, not binding)
-    // Return the existing user - allow login
-    console.log('[createOrGetUser] Returning existing user:', existingProfile.id);
-    return { userId: existingProfile.id };
+    // Return the existing user with session token
+    console.log('[createOrGetUser] Returning existing user with session:', existingProfile.id);
+    return { userId: existingProfile.id, sessionToken };
   }
 
   // 2. If user is already logged in, bind provider to their existing account
   if (supabaseUserId) {
     console.log('[createOrGetUser] Binding provider to existing user:', supabaseUserId);
     await supabase.from('user_profiles').update({ [field]: providerId }).eq('id', supabaseUserId);
-    return { userId: supabaseUserId };
+
+    // Generate session token using userId directly
+    const { data: link, error: linkError } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      userId: supabaseUserId
+    });
+    if (linkError) {
+      console.error('[createOrGetUser] Failed to generate link for binding:', linkError);
+    }
+    return { userId: supabaseUserId, sessionToken: link?.properties?.hashed_token };
   }
 
   // 3. New user: create account and bind provider
@@ -148,7 +182,7 @@ async function createOrGetUser(provider: string, providerId: string, info: any, 
 
   const { data: link } = await supabase.auth.admin.generateLink({ type: 'magiclink', email });
   console.log('[createOrGetUser] New user created:', userId);
-  return { userId, sessionToken: link?.hashed_token };
+  return { userId, sessionToken: link?.properties?.hashed_token };
 }
 
 serve(async (req) => {

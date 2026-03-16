@@ -1,7 +1,20 @@
 -- Enable Realtime for auth_sessions table
 -- This allows the frontend to subscribe to changes via Supabase Realtime
+-- Use DO block for idempotency (safe to run multiple times)
 
-ALTER PUBLICATION supabase_realtime ADD TABLE auth_sessions;
+DO $$
+BEGIN
+  -- Check if auth_sessions is already in the publication
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+    AND schemaname = 'public'
+    AND tablename = 'auth_sessions'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE auth_sessions;
+  END IF;
+END $$;
 
 -- Add comment for documentation
 COMMENT ON TABLE auth_sessions IS 'OAuth login sessions - Realtime enabled for frontend subscription';
@@ -11,6 +24,7 @@ COMMENT ON TABLE auth_sessions IS 'OAuth login sessions - Realtime enabled for f
 
 -- Drop the existing policy
 DROP POLICY IF EXISTS "Users can view own auth sessions" ON auth_sessions;
+DROP POLICY IF EXISTS "Users can view auth sessions" ON auth_sessions;
 
 -- Create new policy that allows:
 -- 1. Authenticated users to view their own sessions (by supabase_user_id)

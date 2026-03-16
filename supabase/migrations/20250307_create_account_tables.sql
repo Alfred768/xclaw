@@ -31,7 +31,13 @@ CREATE TABLE IF NOT EXISTS usage_quotas (
 -- Enable RLS on api_keys
 ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for api_keys
+-- RLS Policies for api_keys (drop first for idempotency)
+DROP POLICY IF EXISTS "Users can view own api keys" ON api_keys;
+DROP POLICY IF EXISTS "Users can insert own api keys" ON api_keys;
+DROP POLICY IF EXISTS "Users can update own api keys" ON api_keys;
+DROP POLICY IF EXISTS "Users can delete own api keys" ON api_keys;
+DROP POLICY IF EXISTS "Service role can manage api keys" ON api_keys;
+
 CREATE POLICY "Users can view own api keys"
   ON api_keys FOR SELECT
   USING (auth.uid() = user_id);
@@ -56,7 +62,12 @@ CREATE POLICY "Service role can manage api keys"
 -- Enable RLS on usage_quotas
 ALTER TABLE usage_quotas ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for usage_quotas
+-- RLS Policies for usage_quotas (drop first for idempotency)
+DROP POLICY IF EXISTS "Users can view own quota" ON usage_quotas;
+DROP POLICY IF EXISTS "Users can insert own quota" ON usage_quotas;
+DROP POLICY IF EXISTS "Users can update own quota" ON usage_quotas;
+DROP POLICY IF EXISTS "Service role can manage quotas" ON usage_quotas;
+
 CREATE POLICY "Users can view own quota"
   ON usage_quotas FOR SELECT
   USING (auth.uid() = user_id);

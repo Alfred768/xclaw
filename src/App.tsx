@@ -25,6 +25,7 @@ const Todo = lazy(() => import('./pages/Todo'));
 const Briefing = lazy(() => import('./pages/Briefing'));
 const Usage = lazy(() => import('./pages/Usage'));
 const Account = lazy(() => import('./pages/Account'));
+const Subscription = lazy(() => import('./pages/Subscription'));
 
 // Page loader component for Suspense fallback
 function PageLoader() {
@@ -178,6 +179,7 @@ function App() {
               <Route path="/todo" element={<Todo />} />
               <Route path="/briefing" element={<Briefing />} />
               <Route path="/usage" element={<Usage />} />
+              <Route path="/subscription" element={<Subscription />} />
               <Route path="/channels" element={<Channels />} />
               <Route path="/skills" element={<Skills />} />
               <Route path="/cron" element={<Cron />} />
