@@ -3,7 +3,7 @@
  * Catches and displays errors in the component tree
  */
 import { Component, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { Warning, ArrowClockwise } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -46,7 +46,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <Card className="max-w-md">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <AlertTriangle className="h-6 w-6 text-destructive" />
+                <Warning className="h-6 w-6 text-destructive" weight="fill" />
                 <CardTitle>Something went wrong</CardTitle>
               </div>
               <CardDescription>
@@ -60,7 +60,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 </pre>
               )}
               <Button onClick={this.handleReset} className="w-full">
-                <RefreshCw className="mr-2 h-4 w-4" />
+                <ArrowClockwise className="mr-2 h-4 w-4" weight="bold" />
                 Try Again
               </Button>
             </CardContent>

@@ -4,15 +4,16 @@
  */
 import { useEffect, useState } from 'react';
 import {
-  Activity,
-  MessageSquare,
-  Radio,
-  Puzzle,
+  Pulse,
+  ChatCircle,
+  Broadcast,
+  PuzzlePiece,
   Clock,
-  Settings,
+  Gear,
   Plus,
   Terminal,
-} from 'lucide-react';
+  Radio,
+} from '@phosphor-icons/react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -90,7 +91,7 @@ export function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">{t('gateway')}</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <Pulse className="h-4 w-4 text-muted-foreground" weight="regular" />
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -108,7 +109,7 @@ export function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">{t('channels')}</CardTitle>
-            <Radio className="h-4 w-4 text-muted-foreground" />
+            <Broadcast className="h-4 w-4 text-muted-foreground" weight="regular" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{connectedChannels}</div>
@@ -122,7 +123,7 @@ export function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">{t('skills')}</CardTitle>
-            <Puzzle className="h-4 w-4 text-muted-foreground" />
+            <PuzzlePiece className="h-4 w-4 text-muted-foreground" weight="regular" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{enabledSkills}</div>
@@ -136,7 +137,7 @@ export function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">{t('uptime')}</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-muted-foreground" weight="regular" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -159,25 +160,25 @@ export function Dashboard() {
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <Button variant="outline" className="h-auto flex-col gap-2 py-4" asChild>
               <Link to="/channels">
-                <Plus className="h-5 w-5" />
+                <Plus className="h-5 w-5" weight="bold" />
                 <span>{t('quickActions.addChannel')}</span>
               </Link>
             </Button>
             <Button variant="outline" className="h-auto flex-col gap-2 py-4" asChild>
               <Link to="/skills">
-                <Puzzle className="h-5 w-5" />
+                <PuzzlePiece className="h-5 w-5" weight="regular" />
                 <span>{t('quickActions.browseSkills')}</span>
               </Link>
             </Button>
             <Button variant="outline" className="h-auto flex-col gap-2 py-4" asChild>
               <Link to="/">
-                <MessageSquare className="h-5 w-5" />
+                <ChatCircle className="h-5 w-5" weight="regular" />
                 <span>{t('quickActions.openChat')}</span>
               </Link>
             </Button>
             <Button variant="outline" className="h-auto flex-col gap-2 py-4" asChild>
               <Link to="/settings">
-                <Settings className="h-5 w-5" />
+                <Gear className="h-5 w-5" weight="regular" />
                 <span>{t('quickActions.settings')}</span>
               </Link>
             </Button>
@@ -187,7 +188,7 @@ export function Dashboard() {
                 className="h-auto flex-col gap-2 py-4"
                 onClick={openDevConsole}
               >
-                <Terminal className="h-5 w-5" />
+                <Terminal className="h-5 w-5" weight="regular" />
                 <span>{t('quickActions.devConsole')}</span>
               </Button>
             )}
@@ -247,7 +248,7 @@ export function Dashboard() {
           <CardContent>
             {skills.filter((s) => s.enabled).length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <Puzzle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <PuzzlePiece className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>{t('noSkills')}</p>
                 <Button variant="link" asChild className="mt-2">
                   <Link to="/skills">{t('enableSome')}</Link>

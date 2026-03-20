@@ -5,12 +5,16 @@
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Component, useEffect, Suspense, lazy } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
-import { Toaster } from 'sonner';
+import type { Session } from '@supabase/supabase-js';
 import i18n from './i18n';
 import { MainLayout } from './components/layout/MainLayout';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Toaster } from '@/components/ui/sonner';
 import { useSettingsStore } from './stores/settings';
 import { useGatewayStore } from './stores/gateway';
+import { useAccountStore } from '@/stores/account';
+import { useAuthStore } from '@/stores/auth';
+import { supabase } from '@/lib/supabase';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 
 // Lazy load pages for code splitting
@@ -108,11 +112,22 @@ function App() {
   const language = useSettingsStore((state) => state.language);
   const setupComplete = useSettingsStore((state) => state.setupComplete);
   const initGateway = useGatewayStore((state) => state.init);
+  const setAuthUser = useAuthStore((state) => state.setUser);
+  const setAccessToken = useAuthStore((state) => state.setAccessToken);
+  const resetAccount = useAccountStore((state) => state.reset);
 
   // Sync i18n language with persisted settings on mount
   useEffect(() => {
     if (language && language !== i18n.language) {
       i18n.changeLanguage(language);
+    }
+
+    // Keep main-process settings in sync so IPC handlers using getSetting('language')
+    // see the same language as renderer i18n.
+    if (language && window.electron?.ipcRenderer?.invoke) {
+      void window.electron.ipcRenderer.invoke('settings:set', 'language', language).catch(() => {
+        // Ignore sync errors in renderer lifecycle.
+      });
     }
   }, [language]);
 
@@ -120,6 +135,64 @@ function App() {
   useEffect(() => {
     initGateway();
   }, [initGateway]);
+
+  useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+
+    let isActive = true;
+
+    const applySession = (session: Session | null) => {
+      if (!isActive) {
+        return;
+      }
+
+      if (!session?.user) {
+        setAccessToken(null);
+        setAuthUser(null);
+        resetAccount();
+        return;
+      }
+
+      const existingUser = useAuthStore.getState().user;
+      const metadata = session.user.user_metadata ?? {};
+      const displayName = typeof metadata.display_name === 'string'
+        ? metadata.display_name
+        : existingUser?.displayName;
+      const avatarUrl = typeof metadata.avatar_url === 'string'
+        ? metadata.avatar_url
+        : existingUser?.avatarUrl;
+
+      setAccessToken(session.access_token);
+      setAuthUser({
+        id: session.user.id,
+        publicId: existingUser?.publicId,
+        email: session.user.email ?? existingUser?.email,
+        displayName,
+        avatarUrl,
+        subscriptionTier: existingUser?.subscriptionTier || 'free',
+        isTrial: existingUser?.isTrial,
+        trialEndsAt: existingUser?.trialEndsAt ?? null,
+        subscriptionEndsAt: existingUser?.subscriptionEndsAt ?? null,
+        alipayUserId: existingUser?.alipayUserId ?? null,
+        wechatOpenid: existingUser?.wechatOpenid ?? null,
+      });
+    };
+
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      applySession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      applySession(session);
+    });
+
+    return () => {
+      isActive = false;
+      subscription.unsubscribe();
+    };
+  }, [resetAccount, setAccessToken, setAuthUser]);
 
   // Redirect to setup wizard if not complete
   useEffect(() => {

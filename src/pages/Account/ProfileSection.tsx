@@ -4,7 +4,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { User, Copy, Check, Save, Upload } from 'lucide-react';
+import { User, Copy, Check, FloppyDisk, Upload } from '@phosphor-icons/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,8 +38,9 @@ export function ProfileSection() {
   };
 
   const copyUserId = async () => {
-    if (user?.id) {
-      await navigator.clipboard.writeText(user.id);
+    const publicId = profile?.public_id || user?.publicId;
+    if (publicId) {
+      await navigator.clipboard.writeText(publicId);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -86,7 +87,7 @@ export function ProfileSection() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <User className="h-5 w-5" />
+          <User className="h-5 w-5" weight="regular" />
           {t('profile.title')}
         </CardTitle>
         <CardDescription>{t('profile.description')}</CardDescription>
@@ -102,7 +103,7 @@ export function ProfileSection() {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <User className="h-10 w-10 text-muted-foreground" />
+              <User className="h-10 w-10 text-muted-foreground" weight="thin" />
             )}
           </div>
           <div>
@@ -121,7 +122,7 @@ export function ProfileSection() {
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
             >
-              <Upload className="h-4 w-4 mr-2" />
+              <Upload className="h-4 w-4 mr-2" weight="regular" />
               {t('profile.upload', { defaultValue: 'Upload' })}
             </Button>
           </div>
@@ -142,7 +143,7 @@ export function ProfileSection() {
                 <>{t('profile.saving')}</>
               ) : (
                 <>
-                  <Save className="h-4 w-4 mr-2" />
+                  <FloppyDisk className="h-4 w-4 mr-2" weight="regular" />
                   {t('common:actions.save', { defaultValue: 'Save' })}
                 </>
               )}
@@ -155,13 +156,13 @@ export function ProfileSection() {
           <Label>{t('profile.userId')}</Label>
           <div className="flex items-center gap-2">
             <code className="flex-1 rounded-md bg-muted px-3 py-2 text-sm font-mono">
-              {user?.id}
+              {profile?.public_id || user?.publicId || t('profile.userIdPending', { defaultValue: 'Available after refresh' })}
             </code>
             <Button variant="outline" size="icon" onClick={copyUserId}>
               {copied ? (
-                <Check className="h-4 w-4 text-green-500" />
+                <Check className="h-4 w-4 text-green-500" weight="bold" />
               ) : (
-                <Copy className="h-4 w-4" />
+                <Copy className="h-4 w-4" weight="regular" />
               )}
             </Button>
           </div>

@@ -814,13 +814,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (result.success && result.result) {
         const data = result.result;
         const rawSessions = Array.isArray(data.sessions) ? data.sessions : [];
-        const sessions: ChatSession[] = rawSessions.map((s: Record<string, unknown>) => ({
+        const backendSessions: ChatSession[] = rawSessions.map((s: Record<string, unknown>) => ({
           key: String(s.key || ''),
           label: s.label ? String(s.label) : undefined,
           displayName: s.displayName ? String(s.displayName) : undefined,
           thinkingLevel: s.thinkingLevel ? String(s.thinkingLevel) : undefined,
           model: s.model ? String(s.model) : undefined,
         })).filter((s: ChatSession) => s.key);
+
+        // Preserve local sessions that aren't in the backend response
+        // This prevents losing newly created sessions that haven't been synced yet
+        const { sessions: localSessions } = get();
+        const backendKeys = new Set(backendSessions.map(s => s.key));
+        const localOnlySessions = localSessions.filter(s => !backendKeys.has(s.key));
+
+        // Merge backend sessions with local-only sessions
+        const sessions = [...backendSessions, ...localOnlySessions];
 
         const canonicalBySuffix = new Map<string, string>();
         for (const session of sessions) {
@@ -867,17 +876,36 @@ export const useChatStore = create<ChatState>((set, get) => ({
         if (currentSessionKey !== nextSessionKey) {
           get().loadHistory();
         }
+      } else {
+        // Fallback when sessions.list is unavailable (e.g. blocked by gateway policy):
+        // keep local sessions and ensure current session is visible in the selector.
+        const { sessions, currentSessionKey } = get();
+        if (!sessions.some((s) => s.key === currentSessionKey)) {
+          set({
+            sessions: [...sessions, { key: currentSessionKey, displayName: currentSessionKey }],
+          });
+        }
       }
     } catch (err) {
       console.warn('Failed to load sessions:', err);
+      // Same fallback for transport/runtime failures.
+      const { sessions, currentSessionKey } = get();
+      if (!sessions.some((s) => s.key === currentSessionKey)) {
+        set({
+          sessions: [...sessions, { key: currentSessionKey, displayName: currentSessionKey }],
+        });
+      }
     }
   },
 
   // ── Switch session ──
 
   switchSession: (key: string) => {
-    set({
+    set((s) => ({
       currentSessionKey: key,
+      sessions: s.sessions.some((session) => session.key === key)
+        ? s.sessions
+        : [...s.sessions, { key, displayName: key }],
       messages: [],
       streamingText: '',
       streamingMessage: null,
@@ -886,7 +914,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       error: null,
       pendingFinal: false,
       lastUserMessageAt: null,
-    });
+    }));
     // Load history for new session
     get().loadHistory();
   },
@@ -895,12 +923,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   newSession: () => {
     // Generate a new unique session key and switch to it
-    const prefix = getCanonicalPrefixFromSessions(get().sessions) ?? DEFAULT_CANONICAL_PREFIX;
+    const { sessions, currentSessionKey } = get();
+    const sessionsForPrefix = sessions.some((s) => s.key === currentSessionKey)
+      ? sessions
+      : [...sessions, { key: currentSessionKey, displayName: currentSessionKey }];
+    const prefix = getCanonicalPrefixFromSessions(sessionsForPrefix) ?? DEFAULT_CANONICAL_PREFIX;
     const newKey = `${prefix}:session-${Date.now()}`;
     const newSessionEntry: ChatSession = { key: newKey, displayName: newKey };
     set((s) => ({
+      sessions: (() => {
+        const withCurrent = s.sessions.some((session) => session.key === s.currentSessionKey)
+          ? s.sessions
+          : [...s.sessions, { key: s.currentSessionKey, displayName: s.currentSessionKey }];
+        return withCurrent.some((session) => session.key === newKey)
+          ? withCurrent
+          : [...withCurrent, newSessionEntry];
+      })(),
       currentSessionKey: newKey,
-      sessions: [...s.sessions, newSessionEntry],
       messages: [],
       streamingText: '',
       streamingMessage: null,
@@ -927,9 +966,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const newSessions = sessions.filter((s) => s.key !== key);
     set({ sessions: newSessions });
 
-    // If deleted current session, switch to default
+    // If deleted current session, switch to another available session (or default)
     if (currentSessionKey === key) {
-      get().switchSession(DEFAULT_SESSION_KEY);
+      const fallbackSession = newSessions[0]?.key ?? DEFAULT_SESSION_KEY;
+      get().switchSession(fallbackSession);
     }
   },
 

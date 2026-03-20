@@ -4,25 +4,24 @@
  */
 import { useEffect, useState } from 'react';
 import {
-  Settings,
+  Gear,
   Play,
   Clock,
   FileText,
-  RefreshCw,
+  ArrowClockwise,
   Calendar,
-  Link2,
+  Link,
   X,
-  Save,
+  FloppyDisk,
   Plus,
   FolderOpen,
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
-import { useSettingsStore } from '@/stores/settings';
 
 interface BriefingSettings {
   briefingTime: string;
@@ -41,7 +40,8 @@ interface BriefingData {
 
 export function Briefing() {
   const { t } = useTranslation('briefing');
-  const { language } = useSettingsStore();
+  // Note: language is detected at generation time using navigator.language
+  // to ensure it follows system language dynamically
 
   const [settings, setSettings] = useState<BriefingSettings>({
     briefingTime: '08:00',
@@ -162,10 +162,15 @@ export function Briefing() {
 
       console.log('[Briefing] Generate called, topics:', settings.focusTopics);
 
+      // Detect current system language at generation time (not from persisted store)
+      const systemLang = navigator.language.toLowerCase();
+      const detectedLang = systemLang.startsWith('zh') ? 'zh' : systemLang.startsWith('ja') ? 'ja' : 'en';
+      console.log('[Briefing] System language:', navigator.language, '-> detected:', detectedLang);
+
       const result = await window.electron.ipcRenderer.invoke('briefing:generate', {
         topics: settings.focusTopics,
         obsidianVaultPath: settings.obsidianVaultPath,
-        language: language,
+        language: detectedLang,
         searchMode: settings.searchMode,
       }) as {
         success: boolean;
@@ -190,10 +195,23 @@ export function Briefing() {
             const parsed = JSON.parse(result.content);
             if (Array.isArray(parsed)) {
               // Handle array of content blocks (new Gateway format)
-              parsedContent = parsed
-                .map((block: { type?: string; text?: string }) => block.text || '')
-                .join('');
-              console.log('[Briefing] Parsed content from JSON array');
+              // Supports: text blocks and toolCall blocks
+              const textParts: string[] = [];
+              for (const block of parsed) {
+                if (block.type === 'text' && block.text) {
+                  textParts.push(block.text);
+                } else if (block.type === 'toolCall') {
+                  // toolCall blocks: extract URL or other useful info
+                  if (block.arguments?.url) {
+                    textParts.push(`[${block.name || 'Tool'}: ${block.arguments.url}]`);
+                  } else if (block.arguments?.content) {
+                    textParts.push(block.arguments.content);
+                  }
+                  // Skip raw toolCall JSON - it's not human-readable content
+                }
+              }
+              parsedContent = textParts.join('\n');
+              console.log('[Briefing] Parsed content from JSON array, parts:', textParts.length);
             }
           } catch {
             // Not JSON, use as-is
@@ -281,12 +299,12 @@ export function Briefing() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => setShowSettings(true)}>
-            <Settings className="h-5 w-5" />
+            <Gear className="h-5 w-5" />
           </Button>
           <Button onClick={generateBriefing} disabled={generating}>
             {generating ? (
               <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                <ArrowClockwise className="h-4 w-4 mr-2 animate-spin" />
                 {t('generating')}
               </>
             ) : (
@@ -323,7 +341,7 @@ export function Briefing() {
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
-                <Link2 className="h-4 w-4" />
+                <Link className="h-4 w-4" />
                 <span className="text-sm">{t('topics')}</span>
               </div>
               <div className="flex flex-wrap justify-center gap-1">
@@ -489,7 +507,7 @@ export function Briefing() {
 
               {/* Save Button */}
               <Button className="w-full" onClick={saveSettings}>
-                <Save className="h-4 w-4 mr-2" />
+                <FloppyDisk className="h-4 w-4 mr-2" />
                 {t('save')}
               </Button>
             </div>

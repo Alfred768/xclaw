@@ -68,13 +68,26 @@ const defaultSettings = {
   setupComplete: false,
 };
 
+function syncSettingToMainProcess(key: string, value: unknown): void {
+  if (typeof window === 'undefined') return;
+  const invoke = window.electron?.ipcRenderer?.invoke;
+  if (typeof invoke !== 'function') return;
+  void invoke('settings:set', key, value).catch(() => {
+    // Ignore sync errors in renderer store updates.
+  });
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       ...defaultSettings,
 
       setTheme: (theme) => set({ theme }),
-      setLanguage: (language) => { i18n.changeLanguage(language); set({ language }); },
+      setLanguage: (language) => {
+        i18n.changeLanguage(language);
+        set({ language });
+        syncSettingToMainProcess('language', language);
+      },
       setStartMinimized: (startMinimized) => set({ startMinimized }),
       setLaunchAtStartup: (launchAtStartup) => set({ launchAtStartup }),
       setGatewayAutoStart: (gatewayAutoStart) => set({ gatewayAutoStart }),

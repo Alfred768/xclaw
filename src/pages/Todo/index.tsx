@@ -7,17 +7,17 @@ import {
   Check,
   X,
   Plus,
-  Trash2,
-  Edit3,
-  Save,
-  ListTodo,
+  Trash,
+  PencilSimple,
+  FloppyDisk,
+  ListChecks,
   FileText,
   Clock,
-  CheckCircle2,
+  CheckCircle,
   Circle,
   Upload,
-  Loader2,
-} from 'lucide-react';
+  CircleNotch,
+} from '@phosphor-icons/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,7 @@ interface TodoItem {
 }
 
 export function Todo() {
-  const { t } = useTranslation('todo');
+  const { t, i18n } = useTranslation('todo');
   const [tasks, setTasks] = useState<TodoItem[]>([]);
   const [newTaskContent, setNewTaskContent] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -76,6 +76,7 @@ export function Todo() {
   // Extract todos from file via backend handler
   const extractTodosFromFile = async (file: File) => {
     try {
+      setError(null);
       // Read file as base64
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -111,103 +112,54 @@ export function Todo() {
         return;
       }
 
-      // Check if it's a PDF file - use SmartTodo with chat:sendWithMedia
+      // PDF files: extract text locally in main process, then ask LLM on plain text.
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-        console.log('[Todo] Using SmartTodo with chat:sendWithMedia for PDF...');
+        console.log('[Todo] Using todo:extractFromPdf for PDF...');
+        const extractResult = await window.electron.ipcRenderer.invoke(
+          'todo:extractFromPdf',
+          staged.stagedPath,
+        ) as { success: boolean; items?: string[]; error?: string };
 
-        const prompt = `请从以下PDF文件中提取所有待办事项/行动项，并以以下JSON格式返回：
-[TODO_LIST:["item1", "item2", "item3"]]
-
-只返回JSON格式，不要有其他内容。`;
-
-        const chatResult = await window.electron.ipcRenderer.invoke(
-          'chat:sendWithMedia',
-          {
-            sessionKey: 'agent:main:translate-todo',
-            message: prompt,
-            deliver: false,
-            idempotencyKey: `todo-extract-${Date.now()}`,
-            media: [{
-              filePath: staged.stagedPath,
-              mimeType: staged.mimeType,
-              fileName: staged.fileName,
-            }],
-          },
-        ) as { success: boolean; result?: { runId?: string } };
-
-        console.log('[Todo] Gateway result:', chatResult);
-
-        // Poll for results using SmartTodo parsing
-        let todoItems: string[] = [];
-        const maxRetries = 40; // 40 * 3000ms = 120 seconds timeout
-        const retryDelay = 3000;
-
-        for (let i = 0; i < maxRetries; i++) {
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
-
-          try {
-            const historyResult = await window.electron.ipcRenderer.invoke(
-              'gateway:rpc',
-              'chat.history',
-              { sessionKey: 'agent:main:translate-todo', limit: 5 }
-            ) as { success: boolean; result?: { messages?: Array<{ role: string; content?: unknown }> } };
-
-            console.log('[Todo] Poll attempt', i + 1, '- historyResult:', historyResult);
-
-            // Direct path: historyResult.result.messages
-            const messages = historyResult?.result?.messages || [];
-            console.log('[Todo] Messages count:', messages.length);
-
-            // Log all messages for debugging
-            messages.forEach((m: { role: string; content?: unknown }, idx: number) => {
-              console.log(`[Todo] Message ${idx}: role=${m.role}, content type=${typeof m.content}`);
-              if (m.content && typeof m.content === 'string') {
-                console.log(`[Todo] Message ${idx} content preview:`, m.content.substring(0, 200));
-              }
-            });
-
-            const lastAssistantMsg = messages.filter((m: { role: string }) => m.role === 'assistant').pop();
-
-            if (lastAssistantMsg?.content) {
-              const content = typeof lastAssistantMsg.content === 'string'
-                ? lastAssistantMsg.content
-                : JSON.stringify(lastAssistantMsg.content);
-
-              console.log('[Todo] Response content:', content.substring(0, 500));
-
-              // Use SmartTodo parsing function
-              todoItems = parseTodoItemsFromResponse(content);
-              console.log('[SmartTodo] Found todo items:', todoItems);
-
-              if (todoItems.length > 0) {
-                break;
-              }
-            }
-          } catch (err) {
-            console.log('[Todo] Poll error:', err);
-          }
+        if (!extractResult.success) {
+          console.error('[Todo] todo:extractFromPdf failed:', extractResult.error);
+          setError(extractResult.error || 'Failed to extract todos from PDF');
+          return;
         }
 
-        if (todoItems.length > 0) {
-          const addResult = await window.electron.ipcRenderer.invoke('todo:addMany', todoItems) as {
-            success: boolean;
-            tasks?: TodoItem[];
-            error?: string;
-          };
-          if (addResult.success && addResult.tasks) {
-            setTasks([...tasks, ...addResult.tasks]);
-          }
-        } else {
+        const todoItems = Array.isArray(extractResult.items)
+          ? extractResult.items.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+          : [];
+
+        if (todoItems.length === 0) {
           console.log('[Todo] No todo items extracted from PDF');
+          setError('No actionable todo items were extracted from this PDF.');
+          return;
+        }
+
+        const addResult = await window.electron.ipcRenderer.invoke('todo:addMany', todoItems) as {
+          success: boolean;
+          tasks?: TodoItem[];
+          error?: string;
+        };
+        if (addResult.success && addResult.tasks) {
+          setTasks((prev) => [...prev, ...addResult.tasks!]);
         }
         return;
       }
 
       // For text files, use chat:sendWithMedia
+      const language = (i18n.resolvedLanguage || i18n.language || 'en').toLowerCase();
+      const languageInstruction = language.startsWith('zh')
+        ? '请使用简体中文输出待办事项。'
+        : language.startsWith('ja')
+          ? 'ToDo項目は日本語で出力してください。'
+          : 'Please output todo items in English.';
+
       const prompt = `请从以下文件中提取所有待办事项/行动项，并以以下JSON格式返回：
 [TODO_LIST:["item1", "item2", "item3"]]
 
-只返回JSON格式，不要有其他内容。如果文件中没有明确的待办事项，请返回空列表。`;
+只返回JSON格式，不要有其他内容。如果文件中没有明确的待办事项，请返回空列表。
+${languageInstruction}`;
 
       const chatResult = await window.electron.ipcRenderer.invoke(
         'chat:sendWithMedia',
@@ -252,9 +204,9 @@ export function Todo() {
 
             console.log('[Todo] Response content:', contentStr.substring(0, 500));
 
-            const todoMatch = contentStr.match(/\[TODO_LIST:(\[[\s\S]*?\])\]/);
-            if (todoMatch) {
-              todoItems = JSON.parse(todoMatch[1]);
+            const parsedItems = parseTodoItemsFromResponse(contentStr);
+            if (parsedItems.length > 0) {
+              todoItems = parsedItems;
               console.log('[Todo] Extracted items:', todoItems);
               break;
             }
@@ -271,13 +223,14 @@ export function Todo() {
           error?: string;
         };
         if (addResult.success && addResult.tasks) {
-          setTasks([...tasks, ...addResult.tasks]);
+          setTasks((prev) => [...prev, ...addResult.tasks!]);
         }
       } else {
         console.log('[Todo] No todo items extracted');
       }
     } catch (err) {
       console.error('[Todo] Extract error:', err);
+      setError(String(err));
     }
   };
 
@@ -429,7 +382,7 @@ export function Todo() {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-primary/10 rounded-lg">
-            <ListTodo className="h-8 w-8 text-primary" />
+            <ListChecks className="h-8 w-8 text-primary" />
           </div>
           <div>
             <h1 className="text-3xl font-bold">{t('title')}</h1>
@@ -458,7 +411,7 @@ export function Todo() {
         <CardContent className="py-6 flex flex-col items-center justify-center text-center">
           {extracting ? (
             <>
-              <Loader2 className="h-10 w-10 text-primary animate-spin mb-3" />
+              <CircleNotch className="h-10 w-10 text-primary animate-spin mb-3" />
               <p className="text-muted-foreground">{t('extracting') || 'Extracting todos...'}</p>
             </>
           ) : (
@@ -563,7 +516,7 @@ export function Todo() {
           {completedTasks.length > 0 && (
             <div className="space-y-3">
               <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" />
+                <CheckCircle className="h-4 w-4" />
                 {t('completedTasks')} ({completedTasks.length})
               </h2>
               {completedTasks.map((task) => (
@@ -687,7 +640,7 @@ function TaskItem({
                   className="h-8 w-8"
                   onClick={onStartEdit}
                 >
-                  <Edit3 className="h-4 w-4" />
+                  <PencilSimple className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
@@ -695,7 +648,7 @@ function TaskItem({
                   className="h-8 w-8 text-destructive"
                   onClick={onDelete}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash className="h-4 w-4" />
                 </Button>
               </>
             )}

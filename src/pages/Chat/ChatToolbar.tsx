@@ -3,7 +3,7 @@
  * Session selector, new session, refresh, and thinking toggle.
  * Rendered in the Header when on the Chat page.
  */
-import { RefreshCw, Brain, ChevronDown, Plus, Trash2 } from 'lucide-react';
+import { ArrowClockwise, Brain, CaretDown, Plus, Trash } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useChatStore } from '@/stores/chat';
@@ -51,7 +51,7 @@ export function ChatToolbar() {
             </option>
           ))}
         </select>
-        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+        <CaretDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
       </div>
 
       {/* New Session */}
@@ -63,7 +63,7 @@ export function ChatToolbar() {
             className="h-8 w-8"
             onClick={newSession}
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4" weight="bold" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>
@@ -84,7 +84,7 @@ export function ChatToolbar() {
             onClick={() => deleteSession(currentSessionKey)}
             disabled={currentSessionKey === 'agent:main:main'}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash className="h-4 w-4" weight="regular" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>
@@ -102,7 +102,7 @@ export function ChatToolbar() {
             onClick={() => refresh()}
             disabled={loading}
           >
-            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+            <ArrowClockwise className={cn('h-4 w-4', loading && 'animate-spin')} weight="bold" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>
@@ -122,7 +122,7 @@ export function ChatToolbar() {
             )}
             onClick={toggleThinking}
           >
-            <Brain className="h-4 w-4" />
+            <Brain className="h-4 w-4" weight="regular" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>

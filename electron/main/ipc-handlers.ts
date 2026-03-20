@@ -25,7 +25,7 @@ import {
 } from '../utils/secure-storage';
 import { getOpenClawStatus, getOpenClawDir, getOpenClawConfigDir, getOpenClawSkillsDir, ensureDir } from '../utils/paths';
 import { getOpenClawCliCommand, installOpenClawCliMac } from '../utils/openclaw-cli';
-import { getSetting } from '../utils/store';
+import { getSetting, setSetting, getAllSettings, resetSettings, type AppSettings } from '../utils/store';
 import {
   saveProviderKeyToOpenClaw,
   removeProviderKeyFromOpenClaw,
@@ -50,6 +50,12 @@ import { getProviderConfig } from '../utils/provider-registry';
 import { loadUsageRecords, getUsageStats, clearUsageRecords, addUsageRecord } from '../utils/usage-storage';
 import { getProviderDefaultModel } from '../utils/provider-registry';
 
+// ── Usage Tracking Cache ─────────────────────────────────────────────────
+// Cache prompt tokens by sessionKey to pair with completion tokens later
+const _promptTokensCache = new Map<string, number>();
+// Keep cache size bounded (LRU-style: remove oldest entries when over limit)
+const MAX_PROMPT_CACHE_SIZE = 100;
+
 /**
  * Register all IPC handlers
  */
@@ -58,6 +64,9 @@ export function registerIpcHandlers(
   clawHubService: ClawHubService,
   mainWindow: BrowserWindow
 ): void {
+  // Settings handlers
+  registerSettingsHandlers();
+
   // Gateway handlers
   registerGatewayHandlers(gatewayManager, mainWindow);
 
@@ -155,6 +164,47 @@ export function registerIpcHandlers(
       return { success: true };
     } catch (error) {
       logger.error('Failed to delete session:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+}
+
+/**
+ * Settings IPC handlers
+ */
+function registerSettingsHandlers(): void {
+  ipcMain.handle('settings:get', async (_, key: keyof AppSettings) => {
+    try {
+      const value = await getSetting(key);
+      return { success: true, value };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('settings:set', async <K extends keyof AppSettings>(_, key: K, value: AppSettings[K]) => {
+    try {
+      await setSetting(key, value);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('settings:getAll', async () => {
+    try {
+      const settings = await getAllSettings();
+      return { success: true, settings };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('settings:reset', async () => {
+    try {
+      await resetSettings();
+      return { success: true };
+    } catch (error) {
       return { success: false, error: String(error) };
     }
   });
@@ -495,6 +545,12 @@ function registerGatewayHandlers(
     'tools.call',
     'skills.status',
     'skills.update',
+    'channels.status',
+    'channels.add',
+    'channels.delete',
+    'channels.connect',
+    'channels.disconnect',
+    'channels.requestQr',
   ];
 
   ipcMain.handle('gateway:rpc', async (_, method: string, params?: unknown, timeoutMs?: number) => {
@@ -570,6 +626,13 @@ function registerGatewayHandlers(
         const refs = fileReferences.join('\n');
         message = message ? `${message}\n\n${refs}` : refs;
       }
+
+      // ── Record prompt tokens usage ────────────────────────────────────────
+      // Estimate prompt tokens: ~4 characters per token
+      const estimatedPromptTokens = Math.ceil(message.length / 4);
+      // Cache prompt tokens by sessionKey for later use in chat:message event
+      _promptTokensCache.set(params.sessionKey, estimatedPromptTokens);
+      logger.info('[Usage] Cached prompt tokens:', { sessionKey: params.sessionKey, tokens: estimatedPromptTokens });
 
       const rpcParams: Record<string, unknown> = {
         sessionKey: params.sessionKey,
@@ -657,6 +720,7 @@ function registerGatewayHandlers(
       let messageContent = '';
       let messageModel = 'unknown';
       let messageState = '';
+      let sessionKey = '';
 
       // data.message is the outer wrapper
       if (data.message && typeof data.message === 'object') {
@@ -665,6 +729,11 @@ function registerGatewayHandlers(
         // Get state from outer.state
         if (outer.state) {
           messageState = String(outer.state);
+        }
+
+        // Get sessionKey from outer.sessionKey
+        if (outer.sessionKey) {
+          sessionKey = String(outer.sessionKey);
         }
 
         // Check for model in outer message
@@ -718,9 +787,29 @@ function registerGatewayHandlers(
         messageModel = await getCurrentModel();
       }
 
-      // Record when we have content
-      // Estimate tokens: ~4 characters per token
-      const estimatedTokens = Math.ceil(messageContent.length / 4);
+      // ── Record usage with prompt tokens ──────────────────────────────────────
+      // Estimate completion tokens: ~4 characters per token
+      const estimatedCompletionTokens = Math.ceil(messageContent.length / 4);
+
+      // Get cached prompt tokens by sessionKey
+      let promptTokens = 0;
+      if (sessionKey && _promptTokensCache.has(sessionKey)) {
+        promptTokens = _promptTokensCache.get(sessionKey) || 0;
+        // Clear cache after use to prevent memory leak
+        _promptTokensCache.delete(sessionKey);
+        logger.info('[Usage] Retrieved prompt tokens from cache:', { sessionKey, promptTokens });
+      }
+
+      // Clean up old cache entries if over limit
+      if (_promptTokensCache.size > MAX_PROMPT_CACHE_SIZE) {
+        const keysToDelete = Array.from(_promptTokensCache.keys()).slice(0, _promptTokensCache.size - MAX_PROMPT_CACHE_SIZE);
+        for (const key of keysToDelete) {
+          _promptTokensCache.delete(key);
+        }
+        logger.info('[Usage] Cleaned up prompt cache, removed:', keysToDelete.length);
+      }
+
+      const totalTokens = promptTokens + estimatedCompletionTokens;
 
       // Get provider from model name
       const provider = messageModel.includes('/') ? messageModel.split('/')[0] : 'custom';
@@ -729,11 +818,18 @@ function registerGatewayHandlers(
         timestamp: Date.now(),
         model: messageModel,
         provider: provider,
-        promptTokens: 0,
-        completionTokens: estimatedTokens,
-        totalTokens: estimatedTokens,
+        promptTokens,
+        completionTokens: estimatedCompletionTokens,
+        totalTokens,
       });
-      logger.info('[Usage] Recorded:', { model: messageModel, tokens: estimatedTokens, state: messageState });
+      logger.info('[Usage] Recorded:', {
+        model: messageModel,
+        promptTokens,
+        completionTokens: estimatedCompletionTokens,
+        totalTokens,
+        sessionKey,
+        state: messageState
+      });
     } catch (error) {
       logger.warn('[Usage] Error:', error);
     }
@@ -2153,6 +2249,21 @@ function registerTodoHandlers(gatewayManager: GatewayManager): void {
         return { success: false, error: 'File not found' };
       }
 
+      const rawLanguage = await getSetting('language').catch(() => 'en');
+      const language = typeof rawLanguage === 'string' ? rawLanguage.toLowerCase() : 'en';
+      const targetLang = language.startsWith('zh')
+        ? 'zh'
+        : language.startsWith('ja')
+          ? 'ja'
+          : 'en';
+      logger.info('[Todo] Extraction language resolved', { rawLanguage, language, targetLang });
+
+      const languageInstruction = targetLang === 'zh'
+        ? '请使用简体中文输出待办事项。'
+        : targetLang === 'ja'
+          ? 'ToDo項目は日本語で出力してください。'
+          : 'Please output todo items in English.';
+
       // Extract text from PDF using PyPDF2
       const { execSync } = await import('node:child_process');
       let pdfText = '';
@@ -2188,22 +2299,462 @@ print(extract_text_from_pdf(pdf_path))
       }
 
       // Truncate if too long
-      const maxTextLength = 50000;
+      // Keep prompt within a safer size envelope for smaller context models.
+      const maxTextLength = 20000;
       const truncatedText = pdfText.length > maxTextLength
         ? pdfText.substring(0, maxTextLength) + '\n\n[...内容已截断...]'
         : pdfText;
+
+      const extractTodoItemsHeuristically = (text: string): string[] => {
+        const todoItems: string[] = [];
+        const addItem = (item: string) => {
+          const normalized = item.trim().replace(/\s+/g, ' ');
+          if (!normalized) return;
+          if (normalized.length > 240) return;
+          if (/^[0-9][0-9\s*.:/-]*$/.test(normalized)) return;
+          if (/^[A-Z](?:\s+[A-Z0-9*]){3,}$/.test(normalized)) return;
+          if (/^[A-Z]{3,}$/.test(normalized)) return;
+          if (/^[A-Z0-9]{1,4}:$/.test(normalized)) return;
+          if (!todoItems.includes(normalized)) {
+            todoItems.push(normalized);
+          }
+        };
+
+        let match: RegExpExecArray | null;
+
+        const markdownPattern = /[-*]\s*\[([ xX])\]\s*(.+)/g;
+        while ((match = markdownPattern.exec(text)) !== null) {
+          addItem(match[2]);
+        }
+
+        const numberedPattern = /^\d+\.\s*(.+)$/gm;
+        while ((match = numberedPattern.exec(text)) !== null) {
+          addItem(match[1]);
+        }
+
+        // Chinese-style numbered items: 一、 1） (1) 等
+        const zhNumberedPattern = /^(?:\(?\d+\)?[\.、）)]|[一二三四五六七八九十]+[、.）)])\s*(.+)$/gm;
+        while ((match = zhNumberedPattern.exec(text)) !== null) {
+          addItem(match[1]);
+        }
+
+        const todoFormatPattern = /(?:^|\n)\s*(?:TODO:|- TODO:)\s*(.+)/gim;
+        while ((match = todoFormatPattern.exec(text)) !== null) {
+          addItem(match[1]);
+        }
+
+        // Generic bullet lines
+        const bulletPattern = /^(?:[-*•·▪◦]\s+)(.+)$/gm;
+        while ((match = bulletPattern.exec(text)) !== null) {
+          addItem(match[1]);
+        }
+
+        const lines = text.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.length > 200) continue;
+          if (/^#{1,3}\s/.test(trimmed)) continue;
+          if (todoItems.includes(trimmed)) continue;
+          if (/^(?:buy|cook|clean|write|send|call|fix|update|check|review|create|add|remove|complete|finish|start|do|make|get|prepare|organize|schedule|plan|verify|test|deploy|build|read|learn|pay|confirm|keep|archive|detach|return|reimburse)/i.test(trimmed)) {
+            addItem(trimmed);
+            continue;
+          }
+
+          // Chinese action-like lines
+          if (
+            /(待办|待处理|行动项|后续|todo)/i.test(trimmed) ||
+            /^(?:需要|应当|请|务必|必须|建议|完成|处理|提交|签署|确认|联系|发送|更新|检查|跟进|安排|准备|修复)/.test(trimmed)
+          ) {
+            addItem(trimmed.replace(/^(?:待办[:：]\s*)/, ''));
+          }
+        }
+
+        // Sentence-level fallback for prose-heavy PDFs (e.g. reports/assignments)
+        const sentenceActionPattern = /(?:\b(use|used|compute|computed|calculate|calculated|avoid|handle|fix|fixed|update|updated|implement|implemented|design|designed|build|built|add|added|remove|removed|replace|replaced|return|returned|optimize|optimized|debug|pay|paid|confirm|confirmed|archive|archived|keep|kept|reimburse|reimbursed)\b|(?:需要|应当|请|务必|必须|建议|完成|处理|提交|修复|更新|检查|实现|编写|优化|分析|设计|部署|测试|安装|配置|阅读|学习|撰写|创建|添加|删除|跟进))/i;
+        const compactText = text.replace(/\s+/g, ' ');
+        const segments = compactText
+          .split(/(?<=[。！？!?;；.])\s*|(?<=\.)(?=[A-Z])/)
+          .map((segment) => segment.trim());
+        for (const segment of segments) {
+          if (!segment || segment.length < 12 || segment.length > 220) continue;
+          if (/[`{};]/.test(segment)) continue;
+          if (!sentenceActionPattern.test(segment)) continue;
+          addItem(segment.replace(/[。！？!?;；]+$/, ''));
+        }
+
+        // Semantic fallback for billing/invoice-like documents that often don't
+        // contain explicit imperative verbs but still imply concrete actions.
+        const billingDocPattern = /(invoice|billing|remittance|payment\s+terms|please\s+pay|please\s+reimburse|amount\s+due|total\s+amount|tax\s+receipt|付款|发票|账单|应付|金额|回单)/i;
+        if (billingDocPattern.test(compactText)) {
+          const invoiceIdMatch = compactText.match(/\b(?:INV[-\s]?[A-Z0-9]{4,}|[A-Z]\d{7,})\b/i);
+          const amountMatch = compactText.match(/\b(?:CNY|USD|EUR|HKD|JPY|GBP)\s*[0-9][0-9,]*(?:\.[0-9]{1,2})?\b/i);
+          const dateMatches = [...compactText.matchAll(/\b\d{2}\/\d{2}\/\d{4}\b/g)].map((m) => m[0]);
+          const dueDate = dateMatches.length > 0 ? dateMatches[dateMatches.length - 1] : undefined;
+
+          let payTask = 'Pay the invoice';
+          if (invoiceIdMatch?.[0]) {
+            payTask += ` ${invoiceIdMatch[0]}`;
+          }
+          if (amountMatch?.[0]) {
+            payTask += ` (${amountMatch[0].replace(/\s+/g, ' ')})`;
+          }
+          if (dueDate) {
+            payTask += ` before ${dueDate}`;
+          }
+          addItem(payTask);
+          addItem('Keep the remittance advice and tax receipt for accounting records');
+        }
+
+        return todoItems;
+      };
+
+      const sanitizeTodoItems = (items: string[], mode: 'model' | 'heuristic' = 'model'): string[] => {
+        const seen = new Set<string>();
+        const imperativeStartPattern = /^(?:buy|create|add|remove|update|fix|check|review|write|send|call|prepare|organize|plan|verify|test|deploy|build|read|learn|implement|refactor|debug|run|plot|install|configure|complete|finish|submit|analyze|design|document|pay|confirm|archive|keep|detach|return|reimburse)\b/i;
+        const zhImperativeStartPattern = /^(?:需要|应当|请|务必|必须|建议|完成|处理|提交|修复|更新|检查|联系|安排|准备|实现|编写|优化|分析|设计|部署|测试|安装|配置|阅读|学习|撰写|创建|添加|删除|跟进|复现|验证)/;
+        const modalActionPattern = /\b(?:can|should|need\s+to|must)\s+(?:buy|create|add|remove|update|fix|check|review|write|send|call|prepare|organize|plan|verify|test|deploy|build|read|learn|implement|refactor|debug|run|plot|install|configure|complete|finish|submit|analyze|design|document|get|pay|confirm|archive|keep|reimburse)\b/i;
+        const actionPattern = /(?:\b(buy|create|add|remove|update|fix|check|review|write|send|call|prepare|organize|plan|verify|test|deploy|build|read|learn|implement|refactor|debug|run|plot|pay|confirm|archive|keep|detach|return|reimburse)\b|^(需要|应当|请|务必|必须|建议|完成|处理|提交|修复|更新|检查|联系|安排|准备|实现|编写|优化|分析|设计|部署|测试|安装|配置|阅读|学习|撰写|创建|添加|删除|跟进|复现|验证))/i;
+        const explicitTaskMarkerPattern = /^(?:todo|task|action\s*item|待办|任务|行动项)\b[:：]?\s*/i;
+        const noiseLabelPattern = /^(?:fixed\s*code|code|sample\s*code|output|example|solution|answer|hint|note|notes?|todo\s*list|代码|示例|输出|答案|修复后代码|修复代码)\s*[:：]?$/i;
+        const codeLikePattern = /[`{};<>]|=>|\b(import|const|let|var|function|class|return|console\.log)\b|<\/?[a-z][^>]*>/i;
+        const reflectivePattern = /\b(?:i|we)\s+(?:learned|think|believe|guess|found|used|do\s*not\s*think|don't\s*think)\b/i;
+        const citationPattern = /\bet al\.\b|\([A-Z][A-Za-z-]+\s+et al\.\s*\d{4}[a-z]?\)/i;
+        const danglingFragmentPattern = /^(?:and|or|but|with|without|for|to|of|under|over|where|which|that)\b/i;
+
+        const normalizedItems = items
+          .map((rawItem) => {
+            let item = rawItem
+              .replace(/\s+/g, ' ')
+              .replace(/^[-*•·▪◦]\s*/, '')
+              .replace(/^\(?\d+\)?[.)、\-:：]\s*/, '')
+              .replace(/^[一二三四五六七八九十]+[、.）)]\s*/, '')
+              .trim();
+
+            // Convert weak suggestion phrasing to imperative-style when possible.
+            item = item
+              .replace(/^(?:we|i)\s+(?:can|should|need to|must)\s+/i, '')
+              .replace(/^to\s+[^,]{0,40},\s*/i, '')
+              .trim();
+
+            // Keep concise actionable header in patterns like "Run and plot: <long explanation>"
+            const colonMatch = item.match(/^([^:：]{2,80})[:：]\s*(.+)$/);
+            if (colonMatch) {
+              const head = colonMatch[1].trim();
+              const tail = colonMatch[2].trim();
+              if (
+                (imperativeStartPattern.test(head) || zhImperativeStartPattern.test(head)) &&
+                (reflectivePattern.test(tail) || tail.length > 100)
+              ) {
+                item = head;
+              }
+            }
+
+            return item;
+          })
+          .filter((item) => item.length >= 3 && item.length <= 240)
+          .filter((item) => !/^\[[^\]]+\]$/.test(item))
+          .filter((item) => !noiseLabelPattern.test(item))
+          .filter((item) => !codeLikePattern.test(item))
+          .filter((item) => !reflectivePattern.test(item))
+          .filter((item) => !citationPattern.test(item))
+          .filter((item) => !danglingFragmentPattern.test(item))
+          .filter((item) => !/^[A-Z]{3,}$/.test(item))
+          .filter((item) => !/^[A-Z](?:\s+[A-Z0-9*]){3,}$/.test(item))
+          .filter((item) => !/^[0-9][0-9\s*.:/-]*$/.test(item));
+
+        for (const item of normalizedItems) {
+          if (
+            mode === 'heuristic' &&
+            !(imperativeStartPattern.test(item) || zhImperativeStartPattern.test(item) || modalActionPattern.test(item))
+          ) {
+            continue;
+          }
+          if (mode === 'model') {
+            const hasTaskSignal = actionPattern.test(item)
+              || modalActionPattern.test(item)
+              || explicitTaskMarkerPattern.test(item);
+            if (!hasTaskSignal) {
+              continue;
+            }
+          }
+          if (!seen.has(item)) {
+            seen.add(item);
+          }
+        }
+
+        return Array.from(seen);
+      };
+
+      const parseArrayFromContent = (content: unknown): string[] | undefined => {
+        const contentStr = (() => {
+          if (typeof content === 'string') return content;
+          if (content === undefined || content === null) return '';
+          try {
+            return JSON.stringify(content) ?? '';
+          } catch {
+            return String(content);
+          }
+        })();
+        if (!contentStr) return undefined;
+        const parseArray = (raw: string): string[] | undefined => {
+          try {
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return undefined;
+            return parsed
+              .filter((item): item is string => typeof item === 'string')
+              .map((item) => item.trim())
+              .filter((item) => item.length > 0);
+          } catch {
+            return undefined;
+          }
+        };
+
+        const candidates = [
+          ...(contentStr.match(/\[[\s\S]*?\]/g) || []),
+        ];
+
+        for (const candidate of candidates) {
+          const direct = parseArray(candidate);
+          if (direct !== undefined) return direct;
+          const unescaped = candidate
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, '\\');
+          const retry = parseArray(unescaped);
+          if (retry !== undefined) return retry;
+        }
+
+        return undefined;
+      };
+
+      const waitForRunResultContent = async (runId: string, maxRetries = 20, delayMs = 1500): Promise<unknown | undefined> => {
+        for (let i = 0; i < maxRetries; i++) {
+          try {
+            const runResult = await gatewayManager.rpc<{ result?: { content?: unknown } }>(
+              'run.result',
+              { runId },
+              4000,
+            );
+            if (runResult?.result?.content) {
+              return runResult.result.content;
+            }
+          } catch {
+            // ignore and continue polling
+          }
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+        return undefined;
+      };
+
+      const detectAuthFailure = (payload: unknown): 'invalid_api_key' | 'auth_error' | undefined => {
+        const queue: unknown[] = [payload];
+        const collected: string[] = [];
+        let depthBudget = 80;
+
+        while (queue.length > 0 && depthBudget > 0) {
+          depthBudget--;
+          const current = queue.shift();
+          if (current === undefined || current === null) continue;
+          if (typeof current === 'string') {
+            collected.push(current);
+            continue;
+          }
+          if (typeof current === 'number' || typeof current === 'boolean') {
+            collected.push(String(current));
+            continue;
+          }
+          if (Array.isArray(current)) {
+            queue.push(...current);
+            continue;
+          }
+          if (typeof current === 'object') {
+            const record = current as Record<string, unknown>;
+            for (const value of Object.values(record)) {
+              queue.push(value);
+            }
+          }
+        }
+
+        const text = collected.join(' ').toLowerCase();
+        if (!text) return undefined;
+
+        if (
+          text.includes('invalid_api_key')
+          || text.includes('invalid api key')
+          || text.includes('incorrect api key provided')
+        ) {
+          return 'invalid_api_key';
+        }
+
+        if (
+          (text.includes('authentication') || text.includes('unauthorized') || text.includes('forbidden'))
+          && text.includes('api')
+          && text.includes('key')
+        ) {
+          return 'auth_error';
+        }
+
+        return undefined;
+      };
+
+      const todoAuthErrorMessage = 'AI extraction failed: provider API key is invalid or expired. Please update your default provider key in Setup/Subscription and retry.';
+
+      const localizeTodoItems = async (items: string[]): Promise<string[]> => {
+        if (items.length === 0 || targetLang === 'en') return items;
+
+        const localizeWithRules = (sourceItems: string[]): string[] => {
+          const toZh = (item: string): string => {
+            const raw = item.trim().replace(/\s+/g, ' ');
+            if (!raw) return raw;
+            const trimmed = raw.replace(/^to\s+/i, '');
+
+            const invoicePaymentMatch = trimmed.match(/^pay\s+the\s+invoice(?:\s+([A-Z0-9-]+))?(?:\s+\(([^)]+)\))?(?:\s+before\s+(\d{2}\/\d{2}\/\d{4}))?/i);
+            if (invoicePaymentMatch) {
+              const invoiceId = invoicePaymentMatch[1]?.trim();
+              const amount = invoicePaymentMatch[2]?.trim();
+              const dueDate = invoicePaymentMatch[3]?.trim();
+              let result = '支付发票款项';
+              if (invoiceId) {
+                result += `（发票号 ${invoiceId}）`;
+              }
+              if (amount) {
+                result += `，金额 ${amount}`;
+              }
+              if (dueDate) {
+                result += `，截止 ${dueDate}`;
+              }
+              return result;
+            }
+
+            if (/^keep\s+the\s+remittance\s+advice\s+and\s+tax\s+receipt/i.test(trimmed)) {
+              return '保留汇款回单和税务凭证用于财务归档';
+            }
+
+            const rules: Array<{ pattern: RegExp; handler: (text: string) => string }> = [
+              { pattern: /^pay\b/i, handler: (text) => `支付${text.replace(/^pay\b/i, '').trim() ? ` ${text.replace(/^pay\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^reimburse\b/i, handler: (text) => `报销${text.replace(/^reimburse\b/i, '').trim() ? ` ${text.replace(/^reimburse\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^confirm\b/i, handler: (text) => `确认${text.replace(/^confirm\b/i, '').trim() ? ` ${text.replace(/^confirm\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^keep\b/i, handler: (text) => `保留${text.replace(/^keep\b/i, '').trim() ? ` ${text.replace(/^keep\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^archive\b/i, handler: (text) => `归档${text.replace(/^archive\b/i, '').trim() ? ` ${text.replace(/^archive\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^run and plot\b/i, handler: () => '运行并绘图' },
+              { pattern: /^add\b/i, handler: (text) => `添加${text.replace(/^add\b/i, '').trim() ? ` ${text.replace(/^add\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^update\b/i, handler: (text) => `更新${text.replace(/^update\b/i, '').trim() ? ` ${text.replace(/^update\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^fix\b/i, handler: (text) => `修复${text.replace(/^fix\b/i, '').trim() ? ` ${text.replace(/^fix\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^check\b/i, handler: (text) => `检查${text.replace(/^check\b/i, '').trim() ? ` ${text.replace(/^check\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^review\b/i, handler: (text) => `复查${text.replace(/^review\b/i, '').trim() ? ` ${text.replace(/^review\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^test\b/i, handler: (text) => `测试${text.replace(/^test\b/i, '').trim() ? ` ${text.replace(/^test\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^implement\b/i, handler: (text) => `实现${text.replace(/^implement\b/i, '').trim() ? ` ${text.replace(/^implement\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^optimi[sz]e\b/i, handler: (text) => `优化${text.replace(/^optimi[sz]e\b/i, '').trim() ? ` ${text.replace(/^optimi[sz]e\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^analy[sz]e\b/i, handler: (text) => `分析${text.replace(/^analy[sz]e\b/i, '').trim() ? ` ${text.replace(/^analy[sz]e\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^design\b/i, handler: (text) => `设计${text.replace(/^design\b/i, '').trim() ? ` ${text.replace(/^design\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^build\b/i, handler: (text) => `构建${text.replace(/^build\b/i, '').trim() ? ` ${text.replace(/^build\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^deploy\b/i, handler: (text) => `部署${text.replace(/^deploy\b/i, '').trim() ? ` ${text.replace(/^deploy\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^read\b/i, handler: (text) => `阅读${text.replace(/^read\b/i, '').trim() ? ` ${text.replace(/^read\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^write\b/i, handler: (text) => `编写${text.replace(/^write\b/i, '').trim() ? ` ${text.replace(/^write\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^submit\b/i, handler: (text) => `提交${text.replace(/^submit\b/i, '').trim() ? ` ${text.replace(/^submit\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^install\b/i, handler: (text) => `安装${text.replace(/^install\b/i, '').trim() ? ` ${text.replace(/^install\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^configure\b/i, handler: (text) => `配置${text.replace(/^configure\b/i, '').trim() ? ` ${text.replace(/^configure\b/i, '').trim()}` : ''}`.trim() },
+              { pattern: /^prepare\b/i, handler: (text) => `准备${text.replace(/^prepare\b/i, '').trim() ? ` ${text.replace(/^prepare\b/i, '').trim()}` : ''}`.trim() },
+            ];
+            for (const rule of rules) {
+              if (rule.pattern.test(trimmed)) {
+                return rule.handler(trimmed);
+              }
+            }
+            const isAscii = /^[\x00-\x7F]+$/.test(trimmed);
+            return isAscii ? `待办：${trimmed}` : trimmed;
+          };
+
+          if (targetLang === 'zh') {
+            return sourceItems.map(toZh);
+          }
+          return sourceItems;
+        };
+
+        const targetName = targetLang === 'zh' ? 'Simplified Chinese' : 'Japanese';
+        const translationPrompt = `Translate the following todo items to ${targetName}.
+Return ONLY a JSON array of translated strings and no other text.
+
+${JSON.stringify(items)}`;
+
+        try {
+          const localizationSessionKey = `agent:main:translate-todo-localize:${Date.now()}:${crypto.randomUUID().slice(0, 8)}`;
+          const translateResult = await gatewayManager.rpc<{ runId?: string }>('chat.send', {
+            sessionKey: localizationSessionKey,
+            message: translationPrompt,
+            deliver: false,
+            idempotencyKey: `todo-localize-${Date.now()}-${crypto.randomUUID()}`,
+          }, 60000);
+
+          if (!translateResult?.runId) {
+            return items;
+          }
+
+          const localizedContent = await waitForRunResultContent(translateResult.runId, 20, 1200);
+          const localizationAuthFailure = detectAuthFailure(localizedContent);
+          if (localizationAuthFailure) {
+            logger.warn('[Todo] Localization skipped due to provider auth failure', {
+              localizationAuthFailure,
+            });
+            const ruleBased = localizeWithRules(items);
+            logger.warn('[Todo] Applied rule-based localization fallback', { count: ruleBased.length, targetLang });
+            return ruleBased;
+          }
+          const translated = parseArrayFromContent(localizedContent);
+          if (translated && translated.length > 0) {
+            return translated;
+          }
+
+          // Fallback: fetch the newest assistant message from the localization session.
+          const historyResult = await gatewayManager.rpc<{
+            messages?: Array<{ role: string; content?: unknown }>;
+            sessions?: Record<string, unknown>;
+          }>('chat.history', { sessionKey: localizationSessionKey, limit: 20 }, 5000);
+
+          let historyMessages = Array.isArray(historyResult?.messages)
+            ? historyResult.messages
+            : [];
+          if (historyMessages.length === 0 && historyResult?.sessions && typeof historyResult.sessions === 'object') {
+            const sessions = historyResult.sessions as Record<string, unknown>;
+            const sessionData = sessions[localizationSessionKey] as { messages?: Array<{ role: string; content?: unknown }> } | undefined;
+            historyMessages = Array.isArray(sessionData?.messages) ? sessionData.messages : [];
+          }
+          const lastAssistant = historyMessages.filter((m) => m.role === 'assistant').pop();
+          const historyAuthFailure = detectAuthFailure(lastAssistant?.content);
+          if (historyAuthFailure) {
+            logger.warn('[Todo] Localization history indicates provider auth failure', {
+              historyAuthFailure,
+            });
+            const ruleBased = localizeWithRules(items);
+            logger.warn('[Todo] Applied rule-based localization fallback', { count: ruleBased.length, targetLang });
+            return ruleBased;
+          }
+          const translatedFromHistory = parseArrayFromContent(lastAssistant?.content);
+          if (translatedFromHistory && translatedFromHistory.length > 0) {
+            return translatedFromHistory;
+          }
+          logger.warn('[Todo] Localization parse failed, falling back to original todo items');
+        } catch (err) {
+          logger.warn('[Todo] Failed to localize todo items', err);
+        }
+
+        const ruleBased = localizeWithRules(items);
+        logger.warn('[Todo] Applied rule-based localization fallback', { count: ruleBased.length, targetLang });
+        return ruleBased;
+      };
 
       const fileName = basename(filePath);
       const prompt = `请从以下PDF文件 "${fileName}" 的文本内容中提取所有待办事项/行动项，并以以下JSON格式返回：
 [TODO_LIST:["item1", "item2", "item3"]]
 
 只返回JSON格式，不要有其他内容。如果文件中没有明确的待办事项，请返回空列表 [TODO_LIST:[]]。
+禁止调用任何工具、禁止读取任何文件路径、禁止访问URL；仅根据上面给出的PDF文本内容提取。
+${languageInstruction}
 
 PDF文本内容：
 ${truncatedText}`;
 
-      // Use a fixed session key to reuse the same OpenClaw process
-      const sessionKey = 'agent:main:translate-todo';
+      // Use isolated session keys for extraction to avoid stale-session side effects.
+      const sessionKey = `agent:main:translate-todo:${Date.now()}:${crypto.randomUUID().slice(0, 8)}`;
 
       // Call Gateway to extract todos from PDF text
       const sendResult = await gatewayManager.rpc<{ runId?: string }>('chat.send', {
@@ -2214,47 +2765,313 @@ ${truncatedText}`;
       }, 120000);
 
       logger.info('[Todo] PDF extract send result:', JSON.stringify(sendResult));
+      const sendTimestamp = Date.now();
 
       const runId = sendResult?.runId;
       if (!runId) {
         return { success: false, error: 'Failed to start extraction' };
       }
 
+      const normalizeTimestampMs = (value: unknown): number | undefined => {
+        if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+        return value < 1_000_000_000_000 ? Math.floor(value * 1000) : Math.floor(value);
+      };
+
+      const contentToString = (content: unknown): string => {
+        if (typeof content === 'string') return content;
+        try {
+          return JSON.stringify(content);
+        } catch {
+          return String(content ?? '');
+        }
+      };
+
+      type ExtractOutcome =
+        | { kind: 'items'; items: string[] }
+        | { kind: 'explicit-empty' }
+        | { kind: 'none' };
+
+      const extractTodoItemsFromContent = (content: unknown): ExtractOutcome => {
+        const contentStr = typeof content === 'string'
+          ? content
+          : JSON.stringify(content);
+
+        const textCandidates: string[] = [];
+        if (typeof content === 'string') {
+          textCandidates.push(content);
+        } else if (Array.isArray(content)) {
+          for (const block of content as Array<Record<string, unknown>>) {
+            if (block && typeof block === 'object') {
+              if (typeof block.text === 'string') textCandidates.push(block.text);
+              if (typeof block.thinking === 'string') textCandidates.push(block.thinking);
+            }
+          }
+        } else if (content && typeof content === 'object') {
+          const c = content as Record<string, unknown>;
+          if (typeof c.text === 'string') textCandidates.push(c.text);
+          if (typeof c.content === 'string') textCandidates.push(c.content);
+          if (c.message && typeof c.message === 'object') {
+            const m = c.message as Record<string, unknown>;
+            if (typeof m.content === 'string') textCandidates.push(m.content);
+            if (typeof m.text === 'string') textCandidates.push(m.text);
+          }
+        }
+
+        const parseArray = (raw: string): string[] | undefined => {
+          try {
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return undefined;
+            return parsed
+              .filter((item): item is string => typeof item === 'string')
+              .map((item) => item.trim())
+              .filter((item) => item.length > 0);
+          } catch {
+            return undefined;
+          }
+        };
+
+        const parseTodoListArray = (raw: string): string[] | undefined => {
+          // Try direct parse first
+          const direct = parseArray(raw);
+          if (direct !== undefined) return direct;
+
+          // Then try unescaped parse for JSON-stringified block content
+          const unescaped = raw
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, '\\');
+          return parseArray(unescaped);
+        };
+
+        // Case 1: [TODO_LIST:[...]]
+        const todoMatch = contentStr.match(/\[TODO_LIST:(\[[\s\S]*?\])\]/);
+        if (todoMatch && todoMatch[1]) {
+          const parsed = parseTodoListArray(todoMatch[1]);
+          if (parsed !== undefined) {
+            return parsed.length > 0
+              ? { kind: 'items', items: parsed }
+              : { kind: 'explicit-empty' };
+          }
+          // Marker existed but couldn't parse -> keep probing other sources/fallback.
+          return { kind: 'none' };
+        }
+
+        // Case 2: {"TODO_LIST":[...]}
+        const jsonObjMatch = contentStr.match(/\{[\s\S]*?"TODO_LIST"\s*:\s*(\[[\s\S]*?\])\s*\}[\s\S]*/);
+        if (jsonObjMatch && jsonObjMatch[1]) {
+          const parsed = parseTodoListArray(jsonObjMatch[1]);
+          if (parsed !== undefined) {
+            return parsed.length > 0
+              ? { kind: 'items', items: parsed }
+              : { kind: 'explicit-empty' };
+          }
+          return { kind: 'none' };
+        }
+
+        // Case 3: any direct JSON array in response body
+        const jsonArrayMatches = contentStr.match(/\[[\s\S]*?\]/g);
+        if (jsonArrayMatches) {
+          for (const candidate of jsonArrayMatches) {
+            const parsed = parseTodoListArray(candidate);
+            if (parsed !== undefined && parsed.length > 0) {
+              return { kind: 'items', items: parsed };
+            }
+          }
+        }
+
+        // Explicit empty-result semantics from model
+        if (/\[TODO_LIST:\s*\[\s*\]\s*\]/i.test(contentStr) || /(没有.*待办|无待办|no\s+todo|no\s+action\s+items)/i.test(contentStr)) {
+          return { kind: 'explicit-empty' };
+        }
+
+        // Fallback: parse assistant plain text as task-like lines.
+        const mergedText = [contentStr, ...textCandidates].join('\n');
+        const fallbackItems = extractTodoItemsHeuristically(mergedText);
+        if (fallbackItems.length > 0) {
+          return { kind: 'items', items: fallbackItems };
+        }
+
+        return { kind: 'none' };
+      };
+
       // Wait for the run to complete and get chat history
       const maxRetries = 40; // 40 * 3000ms = 120 seconds timeout
       const retryDelay = 3000;
+      let sawRunResultContent = false;
+      let sawHistoryAssistantContent = false;
+      let sawModelExplicitEmpty = false;
+      let sawModelAuthFailure: 'invalid_api_key' | 'auth_error' | undefined;
 
       for (let i = 0; i < maxRetries; i++) {
         await new Promise(resolve => setTimeout(resolve, retryDelay));
 
         try {
-          const historyResult = await gatewayManager.rpc<{ sessions?: Record<string, unknown> }>('chat.history', { sessionKey, limit: 5 });
+          // Path A: run.result is usually the most reliable for a specific run.
+          const runResult = await gatewayManager.rpc<{ result?: { content?: unknown } }>(
+            'run.result',
+            { runId },
+            4000,
+          );
+          if (runResult?.result?.content !== undefined) {
+            sawRunResultContent = true;
+          }
+          const runAuthFailure = detectAuthFailure(runResult?.result?.content);
+          if (runAuthFailure) {
+            sawModelAuthFailure = runAuthFailure;
+            logger.error('[Todo] Provider auth failure detected from run.result', {
+              runAuthFailure,
+              runId,
+              sessionKey,
+            });
+            return { success: false, error: todoAuthErrorMessage };
+          }
+          const parsedRun = extractTodoItemsFromContent(runResult?.result?.content);
+          if (parsedRun.kind === 'items') {
+            const runItems = sanitizeTodoItems(parsedRun.items, 'model');
+            if (runItems.length > 0) {
+              return { success: true, items: await localizeTodoItems(runItems) };
+            }
+          } else if (parsedRun.kind === 'explicit-empty') {
+            sawModelExplicitEmpty = true;
+          }
 
-          const sessions = historyResult?.sessions as Record<string, unknown> | undefined;
-          const sessionData = sessions?.[sessionKey] as { messages?: Array<{ role: string; content?: unknown }> } | undefined;
-          const messages = sessionData?.messages || [];
+          // Path B: chat.history fallback, supporting both new and legacy shapes.
+          const historyResult = await gatewayManager.rpc<{
+            messages?: Array<{ role: string; content?: unknown }>;
+            sessions?: Record<string, unknown>;
+          }>('chat.history', { sessionKey, limit: 30 }, 5000);
 
-          // Find the last assistant message
-          const lastAssistantMsg = messages.filter((m: { role: string }) => m.role === 'assistant').pop();
+          let messages = Array.isArray(historyResult?.messages)
+            ? historyResult.messages
+            : [];
 
-          if (lastAssistantMsg?.content) {
-            const contentStr = typeof lastAssistantMsg.content === 'string'
-              ? lastAssistantMsg.content
-              : JSON.stringify(lastAssistantMsg.content);
+          if (messages.length === 0 && historyResult?.sessions && typeof historyResult.sessions === 'object') {
+            const sessions = historyResult.sessions as Record<string, unknown>;
+            const sessionData = sessions[sessionKey] as { messages?: Array<{ role: string; content?: unknown }> } | undefined;
+            messages = Array.isArray(sessionData?.messages) ? sessionData.messages : [];
+          }
 
-            // Extract todo list from response
-            const todoMatch = contentStr.match(/\[TODO_LIST:(\[[\s\S]*?\])\]/);
-            if (todoMatch) {
-              const todoItems = JSON.parse(todoMatch[1]);
-              return { success: true, items: todoItems };
+          type HistoryMessage = {
+            role: string;
+            content?: unknown;
+            timestamp?: number;
+            createdAtMs?: number;
+          };
+          const typedMessages = messages as HistoryMessage[];
+          let lastAssistantContent: unknown;
+
+          // Prefer the assistant response that appears AFTER our newest user message.
+          const userIndex = [...typedMessages].reverse().findIndex((msg) => {
+            if (msg.role !== 'user') return false;
+            const ts = normalizeTimestampMs(msg.timestamp ?? msg.createdAtMs);
+            if (ts && ts >= sendTimestamp - 10_000) return true;
+            const text = contentToString(msg.content);
+            return text.includes(fileName);
+          });
+
+          if (userIndex !== -1) {
+            const absoluteUserIndex = typedMessages.length - 1 - userIndex;
+            for (let j = absoluteUserIndex + 1; j < typedMessages.length; j++) {
+              const msg = typedMessages[j];
+              if (msg.role === 'assistant') {
+                lastAssistantContent = msg.content;
+                break;
+              }
             }
           }
-        } catch {
+
+          if (lastAssistantContent === undefined) {
+            const lastAssistantMsg = typedMessages.filter((m) => m.role === 'assistant').pop();
+            lastAssistantContent = lastAssistantMsg?.content;
+          }
+          if (lastAssistantContent !== undefined) {
+            sawHistoryAssistantContent = true;
+          }
+          const historyAuthFailure = detectAuthFailure(lastAssistantContent);
+          if (historyAuthFailure) {
+            sawModelAuthFailure = historyAuthFailure;
+            logger.error('[Todo] Provider auth failure detected from chat.history', {
+              historyAuthFailure,
+              runId,
+              sessionKey,
+            });
+            return { success: false, error: todoAuthErrorMessage };
+          }
+
+          const parsedHistory = extractTodoItemsFromContent(lastAssistantContent);
+          if (parsedHistory.kind === 'items') {
+            const historyItems = sanitizeTodoItems(parsedHistory.items, 'model');
+            if (historyItems.length > 0) {
+              return { success: true, items: await localizeTodoItems(historyItems) };
+            }
+          } else if (parsedHistory.kind === 'explicit-empty') {
+            sawModelExplicitEmpty = true;
+          }
+        } catch (err) {
+          const errText = String(err).toLowerCase();
+          if (
+            errText.includes('invalid_api_key')
+            || errText.includes('invalid api key')
+            || errText.includes('incorrect api key provided')
+          ) {
+            sawModelAuthFailure = 'invalid_api_key';
+            logger.error('[Todo] Provider auth failure detected while polling extraction', {
+              runId,
+              sessionKey,
+              error: String(err),
+            });
+            return { success: false, error: todoAuthErrorMessage };
+          }
           // Continue polling
+        }
+
+        // Early fallback after a few retries to avoid long UI stalls.
+        if (i >= 5) {
+          const heuristicCandidates = extractTodoItemsHeuristically(truncatedText);
+          const earlyFallback = sanitizeTodoItems(heuristicCandidates, 'heuristic');
+          if (earlyFallback.length > 0) {
+            logger.warn('[Todo] Early fallback activated for PDF extraction', {
+              rawCount: heuristicCandidates.length,
+              count: earlyFallback.length,
+              sawModelExplicitEmpty,
+            });
+            return { success: true, items: await localizeTodoItems(earlyFallback) };
+          }
         }
       }
 
-      return { success: false, error: 'Timeout waiting for extraction result' };
+      // Last-resort fallback: local heuristic extraction from raw PDF text.
+      if (sawModelAuthFailure) {
+        logger.error('[Todo] Returning provider auth failure after extraction polling', {
+          sawModelAuthFailure,
+          runId,
+          sessionKey,
+          sawRunResultContent,
+          sawHistoryAssistantContent,
+        });
+        return { success: false, error: todoAuthErrorMessage };
+      }
+      const heuristicCandidates = extractTodoItemsHeuristically(truncatedText);
+      const fallbackItems = sanitizeTodoItems(heuristicCandidates, 'heuristic');
+      if (fallbackItems.length > 0) {
+        logger.warn('[Todo] AI extraction timed out; returning heuristic fallback items', {
+          rawCount: heuristicCandidates.length,
+          strictCount: fallbackItems.length,
+          sawRunResultContent,
+          sawHistoryAssistantContent,
+          sawModelExplicitEmpty,
+          count: fallbackItems.length,
+        });
+        return { success: true, items: await localizeTodoItems(fallbackItems) };
+      }
+
+      logger.warn('[Todo] AI extraction timed out; returning empty todo list', {
+        rawCount: heuristicCandidates.length,
+        strictCount: fallbackItems.length,
+        sawRunResultContent,
+        sawHistoryAssistantContent,
+        sawModelExplicitEmpty,
+      });
+      return { success: true, items: [] };
     } catch (error) {
       logger.error('[Todo] PDF extraction error:', error);
       return { success: false, error: String(error) };
@@ -2271,6 +3088,7 @@ interface BriefingSettings {
   timezoneOffset: number; // User's timezone offset in minutes
   enabled: boolean; // Auto-generate enabled
   searchMode: 'knowledge' | 'web'; // 'knowledge' = use LLM knowledge, 'web' = try web search (requires browser)
+  language?: string; // Preferred language for briefing generation (zh, ja, en)
 }
 
 interface BriefingData {
@@ -2304,6 +3122,7 @@ function readBriefingSettings(): BriefingSettings {
     timezoneOffset: -new Date().getTimezoneOffset(),
     enabled: true,
     searchMode: 'knowledge',
+    language: 'en',
   };
 
   if (!existsSync(BRIEFING_SETTINGS_PATH)) {
@@ -2453,6 +3272,30 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
     }
   });
 
+  // Helper to extract text content from Gateway content blocks
+  function extractBriefingContent(content: unknown): string {
+    if (typeof content === 'string') return content;
+    if (!Array.isArray(content)) return JSON.stringify(content) || '';
+
+    const textParts: string[] = [];
+    for (const block of content) {
+      if (typeof block !== 'object' || block === null) continue;
+      const b = block as { type?: string; text?: string; name?: string; arguments?: Record<string, unknown> };
+
+      if (b.type === 'text' && b.text) {
+        textParts.push(b.text);
+      } else if (b.type === 'toolCall') {
+        // toolCall blocks: include URL as reference if available
+        if (b.arguments?.url) {
+          textParts.push(`[${b.name || 'Tool'}: ${b.arguments.url}]`);
+        } else if (b.arguments?.content && typeof b.arguments.content === 'string') {
+          textParts.push(b.arguments.content);
+        }
+      }
+    }
+    return textParts.join('\n');
+  }
+
   // Generate briefing (triggers Gateway RPC)
   ipcMain.handle('briefing:generate', async (_, args: {
     topics?: string[];
@@ -2477,115 +3320,23 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
 
       logger.info('[Briefing] Starting briefing generation for topics:', topicsToSearch, 'mode:', args.searchMode);
 
-      // Build language instruction
-      const langInstruction = args.language === 'zh'
-        ? '请用简体中文生成简报。'
-        : args.language === 'ja'
-        ? '日本語で生成してください。'
-        : '';
-
-      const topicsList = topicsToSearch.join(', ');
-
-      // Server-side search (using duck-duck-scrape)
-      let searchContext = '';
-      if (args.searchMode === 'web') {
-        logger.info('[Briefing] Performing server-side web search...');
-        try {
-          const searchResults: Array<{ title: string; url: string; snippet: string }> = [];
-
-          // Search for each topic with delay to avoid rate limiting
-          for (let i = 0; i < topicsToSearch.length; i++) {
-            const topic = topicsToSearch[i];
-            const searchQuery = `${topic} 今日新闻`;
-            logger.info('[Briefing] Searching for:', searchQuery);
-
-            // Add delay between requests to avoid rate limiting
-            if (i > 0) {
-              logger.info('[Briefing] Waiting before next search...');
-              await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-
-            // Use Google News RSS - more reliable for news
-            const encodedQuery = encodeURIComponent(topic);
-            const rssUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=zh-CN&gl=CN&ceid=CN:zh`;
-
-            logger.info('[Briefing] Fetching RSS from:', rssUrl);
-
-            const response = await fetch(rssUrl, {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-              }
-            });
-
-            const xml = await response.text();
-            logger.info('[Briefing] RSS response length:', xml.length);
-
-            // Parse RSS XML
-            const results: Array<{ title: string; url: string; snippet: string }> = [];
-            const itemRegex = /<item[^>]*>[\s\S]*?<\/item>/gi;
-            const itemMatches = xml.match(itemRegex) || [];
-
-            for (const item of itemMatches.slice(0, 10)) {
-              const titleMatch = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/);
-              const linkMatch = item.match(/<link>(.*?)<\/link>|<link><!\[CDATA\[(.*?)\]\]><\/link>/);
-              const descMatch = item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/);
-
-              const title = titleMatch ? (titleMatch[1] || titleMatch[2] || '').trim() : '';
-              const link = linkMatch ? (linkMatch[1] || linkMatch[2] || '').trim() : '';
-              const description = descMatch ? (descMatch[1] || descMatch[2] || '').trim() : '';
-
-              if (title && link) {
-                // Clean HTML from description
-                const cleanDesc = description.replace(/<[^>]+>/g, '').substring(0, 200);
-                results.push({ title, url: link, snippet: cleanDesc });
-              }
-            }
-
-            logger.info('[Briefing] Parsed RSS results:', results.length);
-
-            logger.info('[Briefing] HTML search results:', results.length);
-            searchResults.push(...results);
-          }
-
-          // Format search results as context for LLM
-          if (searchResults.length > 0) {
-            searchContext = `\n\n## 搜索结果 (Web Search Results):\n\n`;
-            for (const r of searchResults) {
-              searchContext += `### ${r.title}\n${r.snippet}\n来源: ${r.url}\n\n`;
-            }
-            logger.info('[Briefing] Search completed, found', searchResults.length, 'results');
-            logger.info('[Briefing] Search context length:', searchContext.length);
-          } else {
-            logger.warn('[Briefing] No search results found');
-          }
-        } catch (searchError) {
-          logger.error('[Briefing] Search failed:', searchError);
-          // Continue without search context
-        }
-      }
-
-      // Build prompt for LLM
-      let prompt: string;
-      if (args.searchMode === 'web' && searchContext) {
-        // Web search mode - use server-side search results
-        prompt = `${langInstruction}
-
-请基于以下搜索结果，总结以下话题的最新新闻：${topicsList}
-${searchContext}
+      // Build language-specific prompts
+      const lang = args.language || 'en';
+      const prompts = {
+        zh: {
+          instruction: '请用简体中文生成简报。',
+          searchLabel: '搜索结果',
+          sourceLabel: '来源',
+          webSearch: `请基于以下搜索结果，总结以下话题的最新新闻：${topicsToSearch.join(', ')}
+{SEARCH_CONTEXT}
 
 请以 Obsidian 友好的 Markdown 格式生成每日简报，包含：
 1. 每个话题的标题
 2. 简要摘要（2-3句话）
 3. 相关链接列表
 
-生成一份结构化的每日简报。`;
-
-        logger.info('[Briefing] Using web search mode, prompt length:', prompt.length);
-      } else {
-        // Knowledge mode - use LLM's internal knowledge only
-        prompt = `${langInstruction}
-
-请基于你的知识，总结以下话题的最新动态和重要新闻：${topicsList}
+生成一份结构化的每日简报。`,
+          knowledge: `请基于你的知识，总结以下话题的最新动态和重要新闻：${topicsToSearch.join(', ')}
 
 重要提示：
 1. 请直接使用你的知识生成简报，禁止使用任何工具或搜索
@@ -2596,9 +3347,252 @@ ${searchContext}
 请以 Obsidian 友好的 Markdown 格式生成每日简报，包含：
 1. 每个话题的标题
 2. 简要摘要（2-3句话）
-3. 如果有相关的官方链接或来源也可以列出
+3. 相关链接列表（如有）
 
-生成一份结构化的每日简报。`;
+生成一份结构化的每日简报。`,
+        },
+        ja: {
+          instruction: '日本語で生成してください。',
+          searchLabel: '検索結果',
+          sourceLabel: '出典',
+          webSearch: `以下の検索結果を基に、最新ニュースをまとめてください：${topicsToSearch.join(', ')}
+{SEARCH_CONTEXT}
+
+Obsidian友好的なMarkdown形式で日次レポートを生成してください：
+1. 各话题のタイトル
+2. 簡単な要約（2-3文）
+3. 関連リンクリスト
+
+構造化された日次レポートを生成してください。`,
+          knowledge: `あなたの知識に基づき、以下の话题の最新動向と重要なニュースをまとめてください：${topicsToSearch.join(', ')}
+
+重要なヒント：
+1. あなたの知識を使用して直接レポートを生成し、ツールや検索を使用しないでください
+2. 特定的话题の最新情報不确定場合は、トレーニングデータ内の最も関連性のある知識に基づいて生成してください
+3. 正確で客観的な要約を提供するよう努力してください
+4. 決してツールを呼び出さないでください
+
+Obsidian友好的なMarkdown形式で日次レポートを生成してください：
+1. 各话题のタイトル
+2. 簡単な要約（2-3文）
+3. 関連リンクリスト（如有）
+
+構造化された日次レポートを生成してください。`,
+        },
+        en: {
+          instruction: 'Please generate the briefing in English.',
+          searchLabel: 'Web Search Results',
+          sourceLabel: 'Source',
+          webSearch: `Based on the following search results, summarize the latest news on these topics: ${topicsToSearch.join(', ')}
+{SEARCH_CONTEXT}
+
+Generate a structured daily briefing in Obsidian-friendly Markdown format:
+1. Headline for each topic
+2. Brief summary (2-3 sentences)
+3. Related links list
+
+Generate a well-structured daily briefing.`,
+          knowledge: `Based on your knowledge, summarize the latest developments and important news on these topics: ${topicsToSearch.join(', ')}
+
+Important notes:
+1. Generate the briefing directly using your knowledge - do NOT use any tools or search
+2. If you're unsure about the latest information on certain topics, generate based on the most relevant knowledge from your training data
+3. Provide accurate, objective summaries
+4. Never attempt to call any tools
+
+Generate a structured daily briefing in Obsidian-friendly Markdown format:
+1. Headline for each topic
+2. Brief summary (2-3 sentences)
+3. Related links list (if available)
+
+Generate a well-structured daily briefing.`,
+        },
+      };
+
+      const p = prompts[lang as keyof typeof prompts] || prompts.en;
+      const topicsList = topicsToSearch.join(', ');
+
+      // ── Multi-source News Fetcher with Fallback ─────────────────────────────
+      // News sources ordered by priority and accessibility for Chinese users
+      interface NewsItem {
+        title: string;
+        url: string;
+        snippet: string;
+      }
+
+      interface NewsSource {
+        name: string;
+        fetch: (topic: string) => Promise<NewsItem[]>;
+      }
+
+      // Parse RSS XML to extract news items
+      function parseRSSXML(xml: string): NewsItem[] {
+        const results: NewsItem[] = [];
+        const itemRegex = /<item[^>]*>[\s\S]*?<\/item>/gi;
+        const itemMatches = xml.match(itemRegex) || [];
+
+        for (const item of itemMatches.slice(0, 10)) {
+          const titleMatch = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/);
+          const linkMatch = item.match(/<link>(.*?)<\/link>|<link><!\[CDATA\[(.*?)\]\]><\/link>/);
+          const descMatch = item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/);
+
+          const title = titleMatch ? (titleMatch[1] || titleMatch[2] || '').trim() : '';
+          const link = linkMatch ? (linkMatch[1] || linkMatch[2] || '').trim() : '';
+          const description = descMatch ? (descMatch[1] || descMatch[2] || '').trim() : '';
+
+          if (title && link) {
+            const cleanDesc = description.replace(/<[^>]+>/g, '').substring(0, 200);
+            results.push({ title, url: link, snippet: cleanDesc });
+          }
+        }
+        return results;
+      }
+
+      // News sources with fallback support
+      const newsSources: NewsSource[] = [
+        // Source 1: Google News RSS (primary)
+        {
+          name: 'Google News RSS',
+          fetch: async (topic: string) => {
+            const encodedQuery = encodeURIComponent(topic);
+            const rssUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=zh-CN&gl=CN&ceid=CN:zh`;
+            logger.info('[Briefing] Trying Google News RSS:', rssUrl);
+
+            const response = await fetch(rssUrl, {
+              headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+              signal: AbortSignal.timeout(15000),
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const xml = await response.text();
+            logger.info('[Briefing] Google News RSS response:', xml.length, 'bytes');
+            return parseRSSXML(xml);
+          }
+        },
+        // Source 2: FeedX BBC Chinese (backup 1)
+        {
+          name: 'FeedX BBC',
+          fetch: async (topic: string) => {
+            const rssUrl = 'https://feedx.net/rss/bbc.xml';
+            logger.info('[Briefing] Trying FeedX BBC RSS:', rssUrl);
+
+            const response = await fetch(rssUrl, {
+              headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+              signal: AbortSignal.timeout(15000),
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const xml = await response.text();
+            logger.info('[Briefing] FeedX BBC response:', xml.length, 'bytes');
+            return parseRSSXML(xml);
+          }
+        },
+        // Source 3: FeedX DW (Deutsche Welle) (backup 2)
+        {
+          name: 'FeedX DW',
+          fetch: async (topic: string) => {
+            const rssUrl = 'https://feedx.net/rss/dw.xml';
+            logger.info('[Briefing] Trying FeedX DW RSS:', rssUrl);
+
+            const response = await fetch(rssUrl, {
+              headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+              signal: AbortSignal.timeout(15000),
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const xml = await response.text();
+            logger.info('[Briefing] FeedX DW response:', xml.length, 'bytes');
+            return parseRSSXML(xml);
+          }
+        },
+        // Source 4: FeedX Economist (backup 3)
+        {
+          name: 'FeedX Economist',
+          fetch: async (topic: string) => {
+            const rssUrl = 'https://feedx.net/rss/economist.xml';
+            logger.info('[Briefing] Trying FeedX Economist RSS:', rssUrl);
+
+            const response = await fetch(rssUrl, {
+              headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+              signal: AbortSignal.timeout(15000),
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const xml = await response.text();
+            logger.info('[Briefing] FeedX Economist response:', xml.length, 'bytes');
+            return parseRSSXML(xml);
+          }
+        },
+      ];
+
+      // Fetch news with fallback to multiple sources
+      async function fetchNewsWithFallback(topic: string): Promise<{ source: string; results: NewsItem[] }> {
+        for (const source of newsSources) {
+          try {
+            const results = await source.fetch(topic);
+            if (results.length > 0) {
+              logger.info(`[Briefing] ✅ Success with source: ${source.name}, found ${results.length} items`);
+              return { source: source.name, results };
+            }
+          } catch (error) {
+            logger.warn(`[Briefing] ❌ Source ${source.name} failed:`, error instanceof Error ? error.message : String(error));
+            // Continue to next source
+          }
+        }
+        return { source: 'none', results: [] };
+      }
+
+      // Server-side search with multi-source fallback
+      let searchContext = '';
+      let usedSources: string[] = [];
+
+      if (args.searchMode === 'web') {
+        logger.info('[Briefing] Performing server-side web search with fallback...');
+        try {
+          const searchResults: NewsItem[] = [];
+
+          for (let i = 0; i < topicsToSearch.length; i++) {
+            const topic = topicsToSearch[i];
+            logger.info('[Briefing] Searching for topic:', topic);
+
+            // Add delay between requests to avoid rate limiting
+            if (i > 0) {
+              logger.info('[Briefing] Waiting before next search...');
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+
+            // Try fetching from multiple sources with fallback
+            const { source, results } = await fetchNewsWithFallback(topic);
+            usedSources.push(source);
+            searchResults.push(...results);
+          }
+
+          // Format search results as context for LLM (using language-specific labels)
+          if (searchResults.length > 0) {
+            searchContext = `\n\n## ${p.searchLabel}:\n\n`;
+            for (const r of searchResults) {
+              searchContext += `### ${r.title}\n${r.snippet}\n${p.sourceLabel}: ${r.url}\n\n`;
+            }
+            logger.info('[Briefing] Search completed, found', searchResults.length, 'results');
+            logger.info('[Briefing] Used sources:', [...new Set(usedSources)].join(', '));
+          } else {
+            logger.warn('[Briefing] No search results found from any source');
+          }
+        } catch (searchError) {
+          logger.error('[Briefing] All search sources failed:', searchError);
+          // Continue without search context
+        }
+      }
+
+      // Build prompt for LLM using language-specific templates
+      let prompt: string;
+      if (args.searchMode === 'web' && searchContext) {
+        // Web search mode - use server-side search results
+        prompt = `${p.instruction}\n\n${p.webSearch.replace('{SEARCH_CONTEXT}', searchContext)}`;
+        logger.info('[Briefing] Using web search mode, prompt length:', prompt.length);
+      } else {
+        // Knowledge mode - use LLM's internal knowledge only
+        prompt = `${p.instruction}\n\n${p.knowledge}`;
       }
 
       // Use a fixed session key to REUSE the same OpenClaw process
@@ -2624,8 +3618,8 @@ ${searchContext}
       // Wait for the run to complete and get chat history
       // The chat.send is async, so we need to poll for results
       let briefingContent = '';
-      const maxRetries = 20;
-      const retryDelay = 3000;
+      const maxRetries = 100;  // Increased from 20 to 100 for longer content generation
+      const retryDelay = 3000;  // 3 seconds between checks
 
       for (let i = 0; i < maxRetries; i++) {
         await new Promise(resolve => setTimeout(resolve, retryDelay));
@@ -2640,7 +3634,7 @@ ${searchContext}
             logger.info(`[Briefing] Run result attempt ${i + 1}:`, JSON.stringify(runResult).substring(0, 300));
 
             if (runResult?.result?.content) {
-              briefingContent = runResult.result.content;
+              briefingContent = extractBriefingContent(runResult.result.content);
               logger.info('[Briefing] Got content from run.result, length:', briefingContent.length);
               break;
             }
@@ -2698,9 +3692,7 @@ ${searchContext}
               // Check if it's not an error message
               const contentStr = JSON.stringify(msg.content);
               if (!contentStr.includes('error') && !contentStr.includes('Error')) {
-                briefingContent = typeof msg.content === 'string'
-                  ? msg.content
-                  : JSON.stringify(msg.content);
+                briefingContent = extractBriefingContent(msg.content);
 
                 if (briefingContent.trim().length > 0 && briefingContent.length > 50) {
                   logger.info('[Briefing] Got content from new assistant message, length:', briefingContent.length);
@@ -2721,6 +3713,13 @@ ${searchContext}
 
       // Save to local storage
       writeBriefingContent(topicsToSearch, briefingContent);
+
+      // Save language preference to briefing settings (for scheduled briefings)
+      if (args.language) {
+        const currentSettings = readBriefingSettings();
+        writeBriefingSettings({ ...currentSettings, language: args.language });
+        logger.info('[Briefing] Saved language preference:', args.language);
+      }
 
       // Write to Obsidian if path is provided
       let obsidianPath = '';
@@ -2944,7 +3943,7 @@ ${searchContext}
           const generateResult = await generateBriefingInternal(gm, {
             topics: settings.focusTopics,
             obsidianVaultPath: settings.obsidianVaultPath,
-            language: 'en',
+            language: settings.language || 'en',
             searchMode: settings.searchMode || 'web',
           });
 
@@ -2974,53 +3973,170 @@ ${searchContext}
       const topicsToSearch = args.topics;
       logger.info('[Briefing Scheduler] Generating for topics:', topicsToSearch);
 
-      // Build language instruction
-      const langInstruction = args.language === 'zh'
-        ? '请用简体中文生成简报。'
-        : '';
+      // Build language-specific prompts (same as main handler)
+      const lang = args.language || 'en';
+      const schedulerPrompts = {
+        zh: {
+          instruction: '请用简体中文生成简报。',
+          searchLabel: '搜索结果',
+          sourceLabel: '来源',
+          webSearch: `请基于以下搜索结果，总结以下话题的最新新闻：${topicsToSearch.join(', ')}
+{SEARCH_CONTEXT}
 
-      const topicsList = topicsToSearch.join(', ');
+请以 Markdown 格式生成每日简报。`,
+          knowledge: `请基于你的知识，总结以下话题的最新动态和重要新闻：${topicsToSearch.join(', ')}
 
-      // Server-side search
+重要提示：
+1. 请直接使用你的知识生成简报，禁止使用任何工具或搜索
+2. 如果某些话题你不太确定最新信息，请基于你训练数据中关于这些话题的最相关知识来生成
+3. 尽量提供准确、客观的摘要
+4. 绝对不要尝试调用任何工具
+
+请以 Markdown 格式生成每日简报。`,
+        },
+        ja: {
+          instruction: '日本語で生成してください。',
+          searchLabel: '検索結果',
+          sourceLabel: '出典',
+          webSearch: `以下の検索結果を基に、最新ニュースをまとめてください：${topicsToSearch.join(', ')}
+{SEARCH_CONTEXT}
+
+Markdown形式で日次レポートを生成してください。`,
+          knowledge: `あなたの知識に基づき、以下の话题の最新動向と重要なニュースをまとめてください：${topicsToSearch.join(', ')}
+
+重要なヒント：
+1. あなたの知識を使用して直接レポートを生成し、ツールや検索を使用しないでください
+2. 特定的话题の最新情報不确定場合は、トレーニングデータ内の最も関連性のある知識に基づいて生成してください
+3. 正確で客観的な要約を提供するよう努力してください
+4. 決してツールを呼び出さないでください
+
+Markdown形式で日次レポートを生成してください。`,
+        },
+        en: {
+          instruction: 'Please generate the briefing in English.',
+          searchLabel: 'Web Search Results',
+          sourceLabel: 'Source',
+          webSearch: `Based on the following search results, summarize the latest news on these topics: ${topicsToSearch.join(', ')}
+{SEARCH_CONTEXT}
+
+Please generate the daily briefing in Markdown format.`,
+          knowledge: `Based on your knowledge, summarize the latest developments and important news on these topics: ${topicsToSearch.join(', ')}
+
+Important notes:
+1. Generate the briefing directly using your knowledge - do NOT use any tools or search
+2. If you're unsure about the latest information on certain topics, generate based on the most relevant knowledge from your training data
+3. Provide accurate, objective summaries
+4. Never attempt to call any tools
+
+Please generate the daily briefing in Markdown format.`,
+        },
+      };
+
+      const sp = schedulerPrompts[lang as keyof typeof schedulerPrompts] || schedulerPrompts.en;
+
+      // ── Multi-source News Fetcher with Fallback (same as main handler) ────────
+      interface NewsItem {
+        title: string;
+        url: string;
+        snippet: string;
+      }
+
+      interface NewsSource {
+        name: string;
+        fetch: (topic: string) => Promise<NewsItem[]>;
+      }
+
+      function parseRSSXML(xml: string): NewsItem[] {
+        const results: NewsItem[] = [];
+        const itemRegex = /<item[^>]*>[\s\S]*?<\/item>/gi;
+        const itemMatches = xml.match(itemRegex) || [];
+
+        for (const item of itemMatches.slice(0, 10)) {
+          const titleMatch = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/);
+          const linkMatch = item.match(/<link>(.*?)<\/link>|<link><!\[CDATA\[(.*?)\]\]><\/link>/);
+          const descMatch = item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/);
+
+          const title = titleMatch ? (titleMatch[1] || titleMatch[2] || '').trim() : '';
+          const link = linkMatch ? (linkMatch[1] || linkMatch[2] || '').trim() : '';
+          const description = descMatch ? (descMatch[1] || descMatch[2] || '').trim() : '';
+
+          if (title && link) {
+            const cleanDesc = description.replace(/<[^>]+>/g, '').substring(0, 200);
+            results.push({ title, url: link, snippet: cleanDesc });
+          }
+        }
+        return results;
+      }
+
+      const newsSources: NewsSource[] = [
+        {
+          name: 'Google News RSS',
+          fetch: async (topic: string) => {
+            const encodedQuery = encodeURIComponent(topic);
+            const rssUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=zh-CN&gl=CN&ceid=CN:zh`;
+            const response = await fetch(rssUrl, {
+              headers: { 'User-Agent': 'Mozilla/5.0' },
+              signal: AbortSignal.timeout(15000),
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return parseRSSXML(await response.text());
+          }
+        },
+        {
+          name: 'FeedX BBC',
+          fetch: async (topic: string) => {
+            const response = await fetch('https://feedx.net/rss/bbc.xml', {
+              headers: { 'User-Agent': 'Mozilla/5.0' },
+              signal: AbortSignal.timeout(15000),
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return parseRSSXML(await response.text());
+          }
+        },
+        {
+          name: 'FeedX DW',
+          fetch: async (topic: string) => {
+            const response = await fetch('https://feedx.net/rss/dw.xml', {
+              headers: { 'User-Agent': 'Mozilla/5.0' },
+              signal: AbortSignal.timeout(15000),
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return parseRSSXML(await response.text());
+          }
+        },
+      ];
+
+      async function fetchNewsWithFallback(topic: string): Promise<{ source: string; results: NewsItem[] }> {
+        for (const source of newsSources) {
+          try {
+            const results = await source.fetch(topic);
+            if (results.length > 0) {
+              logger.info(`[Briefing Scheduler] ✅ Success with source: ${source.name}`);
+              return { source: source.name, results };
+            }
+          } catch (error) {
+            logger.warn(`[Briefing Scheduler] ❌ Source ${source.name} failed:`, error instanceof Error ? error.message : String(error));
+          }
+        }
+        return { source: 'none', results: [] };
+      }
+
+      // Server-side search with multi-source fallback
       let searchContext = '';
       if (args.searchMode === 'web') {
         try {
-          const searchResults: Array<{ title: string; url: string; snippet: string }> = [];
+          const searchResults: NewsItem[] = [];
 
           for (const topic of topicsToSearch) {
-            const encodedQuery = encodeURIComponent(topic);
-            const rssUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=zh-CN&gl=CN&ceid=CN:zh`;
-
-            const response = await fetch(rssUrl, {
-              headers: { 'User-Agent': 'Mozilla/5.0' }
-            });
-
-            const xml = await response.text();
-            const itemRegex = /<item[^>]*>[\s\S]*?<\/item>/gi;
-            const itemMatches = xml.match(itemRegex) || [];
-
-            for (const item of itemMatches.slice(0, 10)) {
-              const titleMatch = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/);
-              const linkMatch = item.match(/<link>(.*?)<\/link>|<link><!\[CDATA\[(.*?)\]\]><\/link>/);
-              const descMatch = item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/);
-
-              const title = titleMatch ? (titleMatch[1] || titleMatch[2] || '').trim() : '';
-              const link = linkMatch ? (linkMatch[1] || linkMatch[2] || '').trim() : '';
-              const description = descMatch ? (descMatch[1] || descMatch[2] || '').trim() : '';
-
-              if (title && link) {
-                const cleanDesc = description.replace(/<[^>]+>/g, '').substring(0, 200);
-                searchResults.push({ title, url: link, snippet: cleanDesc });
-              }
-            }
-
+            const { source, results } = await fetchNewsWithFallback(topic);
+            searchResults.push(...results);
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
 
           if (searchResults.length > 0) {
-            searchContext = '\n\n## 搜索结果:\n\n';
+            searchContext = `\n\n## ${sp.searchLabel}:\n\n`;
             for (const r of searchResults) {
-              searchContext += `### ${r.title}\n${r.snippet}\n来源: ${r.url}\n\n`;
+              searchContext += `### ${r.title}\n${r.snippet}\n${sp.sourceLabel}: ${r.url}\n\n`;
             }
           }
         } catch (searchError) {
@@ -3028,13 +4144,13 @@ ${searchContext}
         }
       }
 
-      // Build prompt
-      const prompt = `${langInstruction}
-
-请基于以下搜索结果，总结以下话题的最新新闻：${topicsList}
-${searchContext}
-
-请以 Markdown 格式生成每日简报。`;
+      // Build prompt using language-specific templates
+      let prompt: string;
+      if (args.searchMode === 'web' && searchContext) {
+        prompt = `${sp.instruction}\n\n${sp.webSearch.replace('{SEARCH_CONTEXT}', searchContext)}`;
+      } else {
+        prompt = `${sp.instruction}\n\n${sp.knowledge}`;
+      }
 
       // Use fixed session for scheduler
       const sessionKey = 'agent:main:briefing';
@@ -3051,7 +4167,7 @@ ${searchContext}
       let briefingContent = '';
       const sendTimestamp = Date.now();
 
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 100; i++) {  // Increased from 20 to 100 for longer content generation
         await new Promise(resolve => setTimeout(resolve, 3000));
 
         const historyResult = await gm.rpc<{ messages: Array<{ role: string; content: unknown; timestamp?: number }> }>('chat.history', { sessionKey, limit: 50 });
@@ -3073,7 +4189,7 @@ ${searchContext}
             if (msg.role === 'assistant' && msg.content) {
               const contentStr = JSON.stringify(msg.content);
               if (!contentStr.includes('error') && contentStr.length > 50) {
-                briefingContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+                briefingContent = extractBriefingContent(msg.content);
                 break;
               }
             }

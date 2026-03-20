@@ -2,7 +2,7 @@
  * Loading Spinner Component
  * Displays a spinning loader animation
  */
-import { Loader2 } from 'lucide-react';
+import { CircleNotch } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
 interface LoadingSpinnerProps {
@@ -19,7 +19,10 @@ const sizeClasses = {
 export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) {
   return (
     <div className={cn('flex items-center justify-center', className)}>
-      <Loader2 className={cn('animate-spin text-primary', sizeClasses[size])} />
+      <CircleNotch
+        className={cn('animate-spin text-primary', sizeClasses[size])}
+        weight="bold"
+      />
     </div>
   );
 }

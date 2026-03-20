@@ -14,7 +14,8 @@
     "changeAvatar": "Change Avatar",
     "displayName": "Display Name",
     "displayNamePlaceholder": "Enter your display name",
-    "userId": "User ID",
+    "userId": "Account ID",
+    "userIdPending": "Available after refresh",
     "memberSince": "Member Since",
     "saving": "Saving...",
     "saved": "Saved successfully"
@@ -31,7 +32,16 @@
     "wechatNotBound": "Not Bound",
     "bind": "Bind",
     "logout": "Sign Out",
-    "logoutConfirm": "Are you sure you want to sign out?"
+    "logoutConfirm": "Are you sure you want to sign out?",
+    "logoutSuccess": "Logged out successfully",
+    "bindSuccess": "Account bound successfully",
+    "bindExpired": "Binding session expired",
+    "bindFailed": "Failed to bind account"
+  },
+  "unauthenticated": {
+    "title": "Please sign in to manage your account",
+    "description": "Account bindings, profile editing, and API keys require an active sign-in session.",
+    "action": "Go to Sign In"
   },
   "usage": {
     "title": "Usage & Quota",

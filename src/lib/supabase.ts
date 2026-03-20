@@ -27,6 +27,60 @@ export const supabase = supabaseUrl && supabaseAnonKey
     })
   : null;
 
+async function isAccessTokenValid(token: string): Promise<boolean> {
+  if (!supabase) {
+    return false;
+  }
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
+    return false;
+  }
+
+  return true;
+}
+
+export async function getCurrentAccessToken(options: { forceRefresh?: boolean } = {}): Promise<string | null> {
+  if (!supabase) {
+    return null;
+  }
+
+  try {
+    if (!options.forceRefresh) {
+      const { data: { session } } = await supabase.auth.getSession();
+      const now = Math.floor(Date.now() / 1000);
+
+      if (
+        session?.access_token &&
+        (!session.expires_at || session.expires_at > now + 30) &&
+        await isAccessTokenValid(session.access_token)
+      ) {
+        return session.access_token;
+      }
+    }
+
+    const { data: { session }, error } = await supabase.auth.refreshSession();
+    if (error) {
+      console.error('[Supabase] Failed to refresh session:', error);
+      return null;
+    }
+
+    if (!session?.access_token) {
+      return null;
+    }
+
+    const isValidRefreshedToken = await isAccessTokenValid(session.access_token);
+    if (!isValidRefreshedToken) {
+      return null;
+    }
+
+    return session.access_token;
+  } catch (error) {
+    console.error('[Supabase] Failed to resolve access token:', error);
+    return null;
+  }
+}
+
 /**
  * Poll for auth session status as fallback
  * This ensures we detect completion even if Realtime fails
@@ -44,17 +98,15 @@ export function pollAuthSession(
     if (stopped) return;
 
     try {
-      const { data, error } = await supabase
-        .from('auth_sessions')
-        .select('*')
-        .eq('login_token', loginToken)
-        .single();
+      const response = await fetch(`/api/auth-session-status?token=${encodeURIComponent(loginToken)}`, {
+        method: 'GET',
+      });
 
-      if (data && !error) {
+      if (response.ok) {
+        const data = await response.json();
         console.log('[Poll] Session status:', data.status);
         onUpdate(data as AuthSessionStatus);
 
-        // Stop polling if completed, expired, or error
         if (['completed', 'expired', 'error'].includes(data.status)) {
           stopped = true;
           return;
@@ -85,69 +137,8 @@ export function subscribeToAuthSession(
   loginToken: string,
   onUpdate: (status: AuthSessionStatus) => void
 ): () => void {
-  if (!supabase) {
-    console.error('Supabase not configured');
-    return () => {};
-  }
-
-  console.log('[Supabase] Setting up realtime subscription + polling for token:', loginToken?.substring(0, 8) + '...');
-
-  let isCompleted = false;
-
-  // Wrapper to prevent duplicate updates after completion
-  const handleUpdate = (status: AuthSessionStatus) => {
-    if (isCompleted) return;
-    if (['completed', 'expired', 'error'].includes(status.status)) {
-      isCompleted = true;
-    }
-    onUpdate(status);
-  };
-
-  // 1. First, immediately check current status
-  supabase
-    .from('auth_sessions')
-    .select('*')
-    .eq('login_token', loginToken)
-    .single()
-    .then(({ data }) => {
-      if (data) {
-        console.log('[Supabase] Initial status check:', data.status);
-        if (['completed', 'expired', 'error'].includes(data.status)) {
-          handleUpdate(data as AuthSessionStatus);
-          return; // Already done, no need to subscribe
-        }
-      }
-    });
-
-  // 2. Set up Realtime subscription
-  const channel = supabase
-    .channel(`auth-session-${loginToken}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'auth_sessions',
-        filter: `login_token=eq.${loginToken}`,
-      },
-      (payload) => {
-        console.log('[Supabase] Received realtime update:', payload);
-        handleUpdate(payload.new as AuthSessionStatus);
-      }
-    )
-    .subscribe((status) => {
-      console.log('[Supabase] Subscription status:', status);
-    });
-
-  // 3. Start polling as backup
-  const stopPolling = pollAuthSession(loginToken, handleUpdate);
-
-  // Return cleanup function that stops both Realtime and polling
-  return () => {
-    console.log('[Supabase] Unsubscribing from channel and stopping polling');
-    supabase.removeChannel(channel);
-    stopPolling();
-  };
+  console.log('[Supabase] Polling auth session status for token:', loginToken?.substring(0, 8) + '...');
+  return pollAuthSession(loginToken, onUpdate);
 }
 
 /**
@@ -173,9 +164,9 @@ export interface AuthSessionStatus {
 /**
  * Initialize auth session
  * @param provider - OAuth provider (wechat or alipay)
- * @param userId - Optional current user ID for binding provider to existing account
+ * @param accessToken - Optional session token used to bind a provider to the current account
  */
-export async function initAuthSession(provider: 'wechat' | 'alipay', userId?: string): Promise<{
+export async function initAuthSession(provider: 'wechat' | 'alipay', accessToken?: string): Promise<{
   loginToken: string;
   oauthUrl: string;
 } | null> {
@@ -185,12 +176,18 @@ export async function initAuthSession(provider: 'wechat' | 'alipay', userId?: st
   }
 
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+
     const response = await fetch('/api/auth-init', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ provider, userId }),
+      headers,
+      body: JSON.stringify({ provider }),
     });
 
     if (!response.ok) {
@@ -213,6 +210,7 @@ export async function getSessionToken(loginToken: string): Promise<{
   expiresIn?: string;
   user: {
     id: string;
+    public_id?: string;
     email?: string;
     display_name?: string;
     avatar_url?: string;

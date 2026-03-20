@@ -116,10 +116,35 @@ export function getOpenClawEntryPath(): string {
 }
 
 /**
+ * Get project root directory in development mode
+ */
+function getProjectRoot(): string {
+  // In Vite dev mode, app.getAppPath() returns the project root
+  // This is more reliable than __dirname which depends on build output location
+  try {
+    const appPath = app.getAppPath();
+    // Check if this looks like a project root (has package.json)
+    if (existsSync(join(appPath, 'package.json'))) {
+      return appPath;
+    }
+  } catch {
+    // Fall through to __dirname based resolution
+  }
+  // Fallback: use __dirname relative path
+  return join(__dirname, '../..');
+}
+
+/**
  * Get ClawHub CLI entry script path (clawdhub.js)
  */
 export function getClawHubCliEntryPath(): string {
-  return join(app.getAppPath(), 'node_modules', 'clawhub', 'bin', 'clawdhub.js');
+  if (app.isPackaged) {
+    // Production: clawhub should be bundled with electron-builder
+    return join(process.resourcesPath, 'node_modules', 'clawhub', 'bin', 'clawdhub.js');
+  }
+  // Development: find node_modules from project root
+  const projectRoot = getProjectRoot();
+  return join(projectRoot, 'node_modules/clawhub/bin/clawdhub.js');
 }
 
 /**
@@ -127,7 +152,12 @@ export function getClawHubCliEntryPath(): string {
  */
 export function getClawHubCliBinPath(): string {
   const binName = process.platform === 'win32' ? 'clawhub.cmd' : 'clawhub';
-  return join(app.getAppPath(), 'node_modules', '.bin', binName);
+  if (app.isPackaged) {
+    return join(process.resourcesPath, 'node_modules', '.bin', binName);
+  }
+  // Development: find node_modules from project root
+  const projectRoot = getProjectRoot();
+  return join(projectRoot, 'node_modules/.bin', binName);
 }
 
 /**

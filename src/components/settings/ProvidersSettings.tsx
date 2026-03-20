@@ -5,16 +5,16 @@
 import { useState, useEffect } from 'react';
 import {
   Plus,
-  Trash2,
-  Edit,
+  Trash,
+  PencilSimple,
   Eye,
-  EyeOff,
+  EyeSlash,
   Check,
   X,
-  Loader2,
+  CircleNotch,
   Star,
   Key,
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -112,25 +112,25 @@ export function ProvidersSettings() {
     <div className="space-y-4">
       <div className="flex justify-end">
         <Button size="sm" onClick={() => setShowAddDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4 mr-2" weight="bold" />
           {t('aiProviders.add')}
         </Button>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin" />
+          <CircleNotch className="h-6 w-6 animate-spin" weight="bold" />
         </div>
       ) : providers.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Key className="h-12 w-12 text-muted-foreground mb-4" />
+            <Key className="h-12 w-12 text-muted-foreground mb-4" weight="thin" />
             <h3 className="text-lg font-medium mb-2">{t('aiProviders.empty.title')}</h3>
             <p className="text-muted-foreground text-center mb-4">
               {t('aiProviders.empty.desc')}
             </p>
             <Button onClick={() => setShowAddDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4 mr-2" weight="bold" />
               {t('aiProviders.empty.cta')}
             </Button>
           </CardContent>
@@ -359,7 +359,7 @@ function ProviderCard({
                   onClick={() => setShowKey(!showKey)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  {showKey ? <EyeSlash className="h-3.5 w-3.5" weight="regular" /> : <Eye className="h-3.5 w-3.5" weight="regular" />}
                 </button>
               </div>
               <Button
@@ -379,20 +379,20 @@ function ProviderCard({
                 }
               >
                 {validating || saving ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <CircleNotch className="h-3.5 w-3.5 animate-spin" weight="bold" />
                 ) : (
-                  <Check className="h-3.5 w-3.5" />
+                  <Check className="h-3.5 w-3.5" weight="bold" />
                 )}
               </Button>
               <Button variant="ghost" size="sm" onClick={onCancelEdit}>
-                <X className="h-3.5 w-3.5" />
+                <X className="h-3.5 w-3.5" weight="bold" />
               </Button>
             </div>
           </div>
         ) : (
           <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2">
             <div className="flex items-center gap-2 min-w-0">
-              <Key className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <Key className="h-3.5 w-3.5 text-muted-foreground shrink-0" weight="regular" />
               <span className="text-sm font-mono text-muted-foreground truncate">
                 {provider.hasKey
                   ? (provider.keyMasked && provider.keyMasked.length > 12
@@ -420,13 +420,14 @@ function ProviderCard({
                       ? 'fill-yellow-400 text-yellow-400'
                       : 'text-muted-foreground'
                   )}
+                  weight={isDefault ? 'fill' : 'regular'}
                 />
               </Button>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit} title={t('aiProviders.card.editKey')}>
-                <Edit className="h-3.5 w-3.5" />
+                <PencilSimple className="h-3.5 w-3.5" weight="regular" />
               </Button>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDelete} title={t('aiProviders.card.delete')}>
-                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                <Trash className="h-3.5 w-3.5 text-destructive" weight="regular" />
               </Button>
             </div>
           </div>
@@ -606,7 +607,7 @@ function AddProviderDialog({ existingTypes, onClose, onAdd, onValidateKey }: Add
                     onClick={() => setShowKey(!showKey)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showKey ? <EyeSlash className="h-4 w-4" weight="regular" /> : <Eye className="h-4 w-4" weight="regular" />}
                   </button>
                 </div>
                 {validationError && (
@@ -673,7 +674,7 @@ function AddProviderDialog({ existingTypes, onClose, onAdd, onValidateKey }: Add
               disabled={!selectedType || saving || ((typeInfo?.showModelId ?? false) && modelId.trim().length === 0)}
             >
               {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <CircleNotch className="h-4 w-4 animate-spin mr-2" weight="bold" />
               ) : null}
               {t('aiProviders.dialog.add')}
             </Button>

@@ -4,7 +4,7 @@
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Code, Plus, Copy, Check, Trash2, Key, AlertTriangle } from 'lucide-react';
+import { Code, Plus, Copy, Check, Trash, Key, Warning } from '@phosphor-icons/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,13 +84,13 @@ export function DeveloperSection() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Code className="h-5 w-5" />
+                <Code className="h-5 w-5" weight="regular" />
                 {t('developer.title')}
               </CardTitle>
               <CardDescription>{t('developer.description')}</CardDescription>
             </div>
             <Button onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4 mr-2" weight="bold" />
               {t('developer.createKey')}
             </Button>
           </div>
@@ -105,7 +105,7 @@ export function DeveloperSection() {
                   className="flex items-center justify-between rounded-lg border p-4"
                 >
                   <div className="flex items-center gap-3">
-                    <Key className="h-5 w-5 text-muted-foreground" />
+                    <Key className="h-5 w-5 text-muted-foreground" weight="regular" />
                     <div>
                       <p className="font-medium">{key.name || 'API Key'}</p>
                       <p className="text-sm text-muted-foreground font-mono">
@@ -124,7 +124,7 @@ export function DeveloperSection() {
                       className="text-destructive hover:text-destructive"
                       onClick={() => handleRevokeKey(key.id)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash className="h-4 w-4" weight="regular" />
                     </Button>
                   </div>
                 </div>
@@ -132,11 +132,11 @@ export function DeveloperSection() {
             </div>
           ) : (
             <div className="rounded-lg border border-dashed p-8 text-center">
-              <Key className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <Key className="h-12 w-12 text-muted-foreground mx-auto mb-4" weight="thin" />
               <p className="text-muted-foreground font-medium">{t('developer.noKeys')}</p>
               <p className="text-sm text-muted-foreground mt-1">{t('developer.noKeysDesc')}</p>
               <Button className="mt-4" onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 mr-2" weight="bold" />
                 {t('developer.createKey')}
               </Button>
             </div>
@@ -178,7 +178,7 @@ export function DeveloperSection() {
             <div className="space-y-4">
               <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4">
                 <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
-                  <Check className="h-4 w-4" />
+                  <Check className="h-4 w-4" weight="bold" />
                   <span className="font-medium">{t('developer.keyCreated')}</span>
                 </div>
                 <p className="text-sm text-green-600 dark:text-green-300 mb-3">
@@ -193,7 +193,7 @@ export function DeveloperSection() {
                     size="icon"
                     onClick={() => copyToClipboard(createdKey)}
                   >
-                    {copiedCreatedKey ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    {copiedCreatedKey ? <Check className="h-4 w-4 text-green-500" weight="bold" /> : <Copy className="h-4 w-4" weight="regular" />}
                   </Button>
                 </div>
               </div>

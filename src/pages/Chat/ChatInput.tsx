@@ -7,7 +7,7 @@
  * are sent with the message (no base64 over WebSocket).
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Square, X, Paperclip, FileText, Film, Music, FileArchive, File, Loader2 } from 'lucide-react';
+import { PaperPlaneTilt, Stop, X, Paperclip, FileText, FilmStrip, MusicNote, FileZip, File, CircleNotch } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -41,12 +41,12 @@ function formatFileSize(bytes: number): string {
 }
 
 function FileIcon({ mimeType, className }: { mimeType: string; className?: string }) {
-  if (mimeType.startsWith('video/')) return <Film className={className} />;
-  if (mimeType.startsWith('audio/')) return <Music className={className} />;
-  if (mimeType.startsWith('text/') || mimeType === 'application/json' || mimeType === 'application/xml') return <FileText className={className} />;
-  if (mimeType.includes('zip') || mimeType.includes('compressed') || mimeType.includes('archive') || mimeType.includes('tar') || mimeType.includes('rar') || mimeType.includes('7z')) return <FileArchive className={className} />;
-  if (mimeType === 'application/pdf') return <FileText className={className} />;
-  return <File className={className} />;
+  if (mimeType.startsWith('video/')) return <FilmStrip className={className} weight="regular" />;
+  if (mimeType.startsWith('audio/')) return <MusicNote className={className} weight="regular" />;
+  if (mimeType.startsWith('text/') || mimeType === 'application/json' || mimeType === 'application/xml') return <FileText className={className} weight="regular" />;
+  if (mimeType.includes('zip') || mimeType.includes('compressed') || mimeType.includes('archive') || mimeType.includes('tar') || mimeType.includes('rar') || mimeType.includes('7z')) return <FileZip className={className} weight="regular" />;
+  if (mimeType === 'application/pdf') return <FileText className={className} weight="regular" />;
+  return <File className={className} weight="regular" />;
 }
 
 /**
@@ -344,7 +344,7 @@ export function ChatInput({ onSend, onStop, disabled = false, sending = false }:
             disabled={disabled || sending}
             title="Attach files"
           >
-            <Paperclip className="h-4 w-4" />
+            <Paperclip className="h-4 w-4" weight="regular" />
           </Button>
 
           {/* Textarea */}
@@ -378,9 +378,9 @@ export function ChatInput({ onSend, onStop, disabled = false, sending = false }:
             title={sending ? 'Stop' : 'Send'}
           >
             {sending ? (
-              <Square className="h-4 w-4" />
+              <Stop className="h-4 w-4" weight="fill" />
             ) : (
-              <Send className="h-4 w-4" />
+              <PaperPlaneTilt className="h-4 w-4" weight="bold" />
             )}
           </Button>
         </div>
@@ -427,7 +427,7 @@ function AttachmentPreview({
       {/* Staging overlay */}
       {attachment.status === 'staging' && (
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-          <Loader2 className="h-4 w-4 text-white animate-spin" />
+          <CircleNotch className="h-4 w-4 text-white animate-spin" weight="bold" />
         </div>
       )}
 
@@ -443,7 +443,7 @@ function AttachmentPreview({
         onClick={onRemove}
         className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <X className="h-3 w-3" />
+        <X className="h-3 w-3" weight="bold" />
       </button>
     </div>
   );

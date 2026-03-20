@@ -4,11 +4,11 @@
  */
 import { useEffect } from 'react';
 import {
-  RefreshCw,
+  ArrowClockwise,
   Coins,
-  Activity,
-  Trash2,
-} from 'lucide-react';
+  Pulse,
+  Trash,
+} from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
   AreaChart,
@@ -71,7 +71,7 @@ export function Usage() {
   if (isLoading && !data) {
     return (
       <div className="flex h-full items-center justify-center">
-        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+        <ArrowClockwise className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -106,7 +106,7 @@ export function Usage() {
             onClick={handleRefresh}
             disabled={isLoading}
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <ArrowClockwise className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
           <Button
             variant="outline"
@@ -114,7 +114,7 @@ export function Usage() {
             onClick={handleClear}
             title={t('clear')}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -130,7 +130,7 @@ export function Usage() {
         <MetricCard
           title={t('metrics.apiRequests')}
           value={formatNumber(data.totalRequests)}
-          icon={<Activity className="h-4 w-4" />}
+          icon={<Pulse className="h-4 w-4" weight="regular" />}
           color="text-green-500"
         />
       </div>

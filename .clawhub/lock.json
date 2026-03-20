@@ -68,6 +68,26 @@
     "summarize": {
       "version": "1.0.0",
       "installedAt": 1771793769623
+    },
+    "openai-whisper-api": {
+      "version": "1.0.0",
+      "installedAt": 1774041915315
+    },
+    "discord": {
+      "version": "1.0.1",
+      "installedAt": 1774041917679
+    },
+    "slack": {
+      "version": "1.0.0",
+      "installedAt": 1774041919027
+    },
+    "imsg": {
+      "version": "1.0.0",
+      "installedAt": 1774041921684
+    },
+    "1password": {
+      "version": "1.0.1",
+      "installedAt": 1774041926760
     }
   }
 }

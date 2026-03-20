@@ -40,8 +40,10 @@ function LinkComponent(props: React.AnchorHTMLAttributes<HTMLAnchorElement>) {
 /**
  * MarkdownRenderer - Parses JSON content and renders Markdown
  *
- * Handles backend response format:
- * [{"type":"thinking","thinking":"..."}, {"type":"text","text":"# 每日简报\n..."}]
+ * Handles backend response formats:
+ * 1. [{"type":"thinking","thinking":"..."}, {"type":"text","text":"# 每日简报\n..."}]
+ * 2. [{"type":"toolCall","name":"write","arguments":{"content":"# 每日简报\n..."}}]
+ * 3. Plain markdown text
  *
  * Links are opened in external browser instead of in-app
  */
@@ -51,12 +53,19 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
   try {
     const parsed = JSON.parse(content);
     if (Array.isArray(parsed)) {
-      // Filter out thinking and extract text content
-      const textParts = parsed
-        .filter((item) => item.type === 'text')
-        .map((item) => item.text)
-        .join('\n');
-      parsedContent = textParts || content;
+      const textParts: string[] = [];
+
+      for (const item of parsed) {
+        if (item.type === 'text' && item.text) {
+          // Standard text content
+          textParts.push(item.text);
+        } else if (item.type === 'toolCall' && item.arguments?.content) {
+          // Tool call with content (e.g., write tool with markdown content)
+          textParts.push(item.arguments.content);
+        }
+      }
+
+      parsedContent = textParts.join('\n') || content;
     }
   } catch {
     // Not JSON, use original content as-is

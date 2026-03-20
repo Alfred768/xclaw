@@ -3,7 +3,7 @@
  * Displays update status and allows manual update checking/installation
  */
 import { useEffect, useCallback } from 'react';
-import { Download, RefreshCw, Loader2, Rocket } from 'lucide-react';
+import { Download, ArrowClockwise, CircleNotch, RocketLaunch } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useUpdateStore } from '@/stores/update';
@@ -47,15 +47,15 @@ export function UpdateSettings() {
     switch (status) {
       case 'checking':
       case 'downloading':
-        return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+        return <CircleNotch className="h-4 w-4 animate-spin text-muted-foreground" weight="bold" />;
       case 'available':
-        return <Download className="h-4 w-4 text-primary" />;
+        return <Download className="h-4 w-4 text-primary" weight="regular" />;
       case 'downloaded':
-        return <Rocket className="h-4 w-4 text-primary" />;
+        return <RocketLaunch className="h-4 w-4 text-primary" weight="regular" />;
       case 'error':
-        return <RefreshCw className="h-4 w-4 text-destructive" />;
+        return <ArrowClockwise className="h-4 w-4 text-destructive" weight="bold" />;
       default:
-        return <RefreshCw className="h-4 w-4 text-muted-foreground" />;
+        return <ArrowClockwise className="h-4 w-4 text-muted-foreground" weight="bold" />;
     }
   };
 
@@ -83,42 +83,42 @@ export function UpdateSettings() {
       case 'checking':
         return (
           <Button disabled variant="outline" size="sm">
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <CircleNotch className="h-4 w-4 mr-2 animate-spin" weight="bold" />
             {t('updates.action.checking')}
           </Button>
         );
       case 'downloading':
         return (
           <Button disabled variant="outline" size="sm">
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <CircleNotch className="h-4 w-4 mr-2 animate-spin" weight="bold" />
             {t('updates.action.downloading')}
           </Button>
         );
       case 'available':
         return (
           <Button onClick={downloadUpdate} size="sm">
-            <Download className="h-4 w-4 mr-2" />
+            <Download className="h-4 w-4 mr-2" weight="regular" />
             {t('updates.action.download')}
           </Button>
         );
       case 'downloaded':
         return (
           <Button onClick={installUpdate} size="sm" variant="default">
-            <Rocket className="h-4 w-4 mr-2" />
+            <RocketLaunch className="h-4 w-4 mr-2" weight="regular" />
             {t('updates.action.install')}
           </Button>
         );
       case 'error':
         return (
           <Button onClick={handleCheckForUpdates} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <ArrowClockwise className="h-4 w-4 mr-2" weight="bold" />
             {t('updates.action.retry')}
           </Button>
         );
       default:
         return (
           <Button onClick={handleCheckForUpdates} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <ArrowClockwise className="h-4 w-4 mr-2" weight="bold" />
             {t('updates.action.check')}
           </Button>
         );
@@ -128,7 +128,7 @@ export function UpdateSettings() {
   if (!isInitialized) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <CircleNotch className="h-4 w-4 animate-spin" weight="bold" />
         <span>Loading...</span>
       </div>
     );

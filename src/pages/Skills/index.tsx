@@ -5,29 +5,30 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search,
-  Puzzle,
-  RefreshCw,
+  MagnifyingGlass,
+  PuzzlePiece,
+  ArrowClockwise,
   Lock,
   Package,
   X,
-  Settings,
-  CheckCircle2,
+  Gear,
+  CheckCircle,
   XCircle,
-  AlertCircle,
+  WarningCircle,
   ShieldCheck,
-  ChevronRight,
-  Sparkles,
+  CaretRight,
+  Sparkle,
+  Star,
   Download,
-  Trash2,
+  Trash,
   Globe,
   FileCode,
   Plus,
-  Save,
+  FloppyDisk,
   Key,
-  ChevronDown,
+  CaretDown,
   FolderOpen,
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -311,7 +312,7 @@ function SkillDetailDialog({ skill, onClose, onToggle }: SkillDetailDialogProps)
                               className="h-8 w-8 text-destructive hover:bg-destructive/10"
                               onClick={() => handleRemoveEnv(index)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash className="h-4 w-4" />
                             </Button>
                           </div>
                         ))}
@@ -340,7 +341,7 @@ function SkillDetailDialog({ skill, onClose, onToggle }: SkillDetailDialogProps)
             <div className="flex items-center gap-2">
               {skill.enabled ? (
                 <>
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <CheckCircle className="h-5 w-5 text-green-500" />
                   <span className="text-green-600 dark:text-green-400">{t('detail.enabled')}</span>
                 </>
               ) : (
@@ -445,7 +446,7 @@ function MarketplaceSkillCard({
                           ))}
                         </div>
                       ) : (
-                        <Trash2 className="h-4 w-4" />
+                        <Trash className="h-4 w-4" />
                       )}
                     </motion.button>
                   </Button>
@@ -508,7 +509,7 @@ function MarketplaceSkillCard({
           )}
           {skill.stars !== undefined && (
             <div className="flex items-center gap-1">
-              <Sparkles className="h-3 w-3" />
+              <Star className="h-3 w-3" />
               {skill.stars.toLocaleString()}
             </div>
           )}
@@ -711,7 +712,7 @@ export function Skills() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={fetchSkills} disabled={!isGatewayRunning}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <ArrowClockwise className="h-4 w-4 mr-2" />
             {t('refresh')}
           </Button>
           {hasInstalledSkills && (
@@ -727,7 +728,7 @@ export function Skills() {
       {showGatewayWarning && (
         <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-900/10">
           <CardContent className="py-4 flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-yellow-600" />
+            <WarningCircle className="h-5 w-5 text-yellow-600" />
             <span className="text-yellow-700 dark:text-yellow-400">
               {t('gatewayWarning')}
             </span>
@@ -739,7 +740,7 @@ export function Skills() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="all" className="gap-2">
-            <Puzzle className="h-4 w-4" />
+            <PuzzlePiece className="h-4 w-4" />
             {t('tabs.installed')}
           </TabsTrigger>
           <TabsTrigger value="marketplace" className="gap-2">
@@ -756,7 +757,7 @@ export function Skills() {
           {/* Search and Filter */}
           <div className="flex gap-4 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <MagnifyingGlass className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder={t('search')}
                 value={searchQuery}
@@ -779,7 +780,7 @@ export function Skills() {
                 onClick={() => setSelectedSource('built-in')}
                 className="gap-2"
               >
-                <Puzzle className="h-3 w-3" />
+                <PuzzlePiece className="h-3 w-3" />
                 {t('filter.builtIn', { count: sourceStats.builtIn })}
               </Button>
               <Button
@@ -798,7 +799,7 @@ export function Skills() {
           {error && (
             <Card className="border-destructive">
               <CardContent className="py-4 text-destructive flex items-center gap-2">
-                <AlertCircle className="h-5 w-5" />
+                <WarningCircle className="h-5 w-5" />
                 {error}
               </CardContent>
             </Card>
@@ -808,7 +809,7 @@ export function Skills() {
           {filteredSkills.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <Puzzle className="h-12 w-12 text-muted-foreground mb-4" />
+                <PuzzlePiece className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">{t('noSkills')}</h3>
                 <p className="text-muted-foreground">
                   {searchQuery ? t('noSkillsSearch') : t('noSkillsAvailable')}
@@ -836,7 +837,7 @@ export function Skills() {
                             {skill.isCore ? (
                               <Lock className="h-3 w-3 text-muted-foreground" />
                             ) : skill.isBundled ? (
-                              <Puzzle className="h-3 w-3 text-blue-500/70" />
+                              <PuzzlePiece className="h-3 w-3 text-blue-500/70" />
                             ) : (
                               <Globe className="h-3 w-3 text-purple-500/70" />
                             )}
@@ -856,7 +857,7 @@ export function Skills() {
                             asChild
                           >
                             <motion.button whileTap={{ scale: 0.9 }}>
-                              <Trash2 className="h-4 w-4" />
+                              <Trash className="h-4 w-4" />
                             </motion.button>
                           </Button>
                         )}
@@ -883,7 +884,7 @@ export function Skills() {
                       )}
                       {skill.configurable && (
                         <Badge variant="secondary" className="text-xs">
-                          <Settings className="h-3 w-3 mr-1" />
+                          <Gear className="h-3 w-3 mr-1" />
                           {t('detail.configurable')}
                         </Badge>
                       )}
@@ -908,7 +909,7 @@ export function Skills() {
             <div className="flex gap-4">
               <form onSubmit={handleMarketplaceSearch} className="flex-1 flex gap-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <MagnifyingGlass className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder={t('searchMarketplace')}
                     value={marketplaceQuery}
@@ -971,7 +972,7 @@ export function Skills() {
             {searchError && (
               <Card className="border-destructive/50 bg-destructive/5">
                 <CardContent className="py-3 text-sm text-destructive flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
+                  <WarningCircle className="h-4 w-4" />
                   <span>{t('marketplace.searchError')}</span>
                 </CardContent>
               </Card>

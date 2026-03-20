@@ -1,3 +1,6 @@
+/* Import Design Tokens */
+@import './tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,49 +16,88 @@
     background-color: hsl(222.2 84% 4.9%);
     color: hsl(210 40% 98%);
   }
+
+  /* ========================================
+     SEMANTIC COLOR ALIASES
+     ======================================== */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Base Colors */
+    --background: var(--neutral-50);
+    --foreground: var(--neutral-900);
+
+    /* Surface Colors */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: var(--neutral-900);
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
+    --popover-foreground: var(--neutral-900);
+
+    /* Brand Colors */
+    --primary: var(--primary-500);
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+
+    /* Secondary Colors */
+    --secondary: var(--neutral-100);
+    --secondary-foreground: var(--neutral-900);
+
+    /* Muted Colors */
+    --muted: var(--neutral-100);
+    --muted-foreground: var(--neutral-500);
+
+    /* Accent Colors */
+    --accent: var(--neutral-100);
+    --accent-foreground: var(--neutral-900);
+
+    /* Semantic Colors */
+    --destructive: var(--error-500);
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --success: var(--success-500);
+    --success-foreground: 210 40% 98%;
+    --warning: var(--warning-500);
+    --warning-foreground: var(--neutral-900);
+
+    /* Border & Input */
+    --border: var(--neutral-200);
+    --input: var(--neutral-200);
+    --ring: var(--primary-500);
+
+    /* Radius */
+    --radius: var(--radius-md);
   }
 
+  /* ========================================
+     DARK MODE
+     ======================================== */
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --background: var(--neutral-900);
+    --foreground: var(--neutral-50);
+
+    --card: var(--neutral-800);
+    --card-foreground: var(--neutral-50);
+    --popover: var(--neutral-800);
+    --popover-foreground: var(--neutral-50);
+
+    --primary: var(--primary-400);
+    --primary-foreground: var(--neutral-900);
+
+    --secondary: var(--neutral-700);
+    --secondary-foreground: var(--neutral-50);
+
+    --muted: var(--neutral-800);
+    --muted-foreground: var(--neutral-400);
+
+    --accent: var(--neutral-700);
+    --accent-foreground: var(--neutral-50);
+
+    --destructive: var(--error-600);
+    --destructive-foreground: var(--neutral-50);
+    --success: var(--success-400);
+    --success-foreground: var(--neutral-900);
+    --warning: var(--warning-400);
+    --warning-foreground: var(--neutral-900);
+
+    --border: var(--neutral-700);
+    --input: var(--neutral-700);
+    --ring: var(--primary-400);
   }
 }
 
@@ -63,13 +105,31 @@
   * {
     @apply border-border;
   }
+
+  html {
+    /* Smooth scroll behavior */
+    scroll-behavior: smooth;
+    /* Better font rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Use design token for line height */
+    line-height: var(--leading-base);
+  }
+
+  /* Better focus styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
 
-/* Custom scrollbar */
+/* ========================================
+   CUSTOM SCROLLBAR
+   ======================================== */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -87,6 +147,16 @@
   @apply bg-muted-foreground/30;
 }
 
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+/* ========================================
+   ELECTRON-SPECIFIC STYLES
+   ======================================== */
+
 /* macOS traffic light spacing */
 .drag-region {
   -webkit-app-region: drag;
@@ -96,19 +166,27 @@
   -webkit-app-region: no-drag;
 }
 
-/* Smooth transitions */
+/* ========================================
+   TRANSITION UTILITIES
+   ======================================== */
+
+/* Theme transition */
 .transition-theme {
-  @apply transition-colors duration-200;
+  @apply transition-colors;
+  transition-duration: var(--duration-normal);
 }
 
-/* Focus ring */
+/* Focus ring utility */
 .focus-ring {
   @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
 }
 
-/* Prose styling for markdown */
+/* ========================================
+   PROSE STYLING FOR MARKDOWN
+   ======================================== */
 .prose {
   line-height: 1.6;
+  color: hsl(var(--foreground));
 }
 
 .prose p {
@@ -133,13 +211,31 @@
 .prose pre {
   margin-top: 0.5em;
   margin-bottom: 0.5em;
+  padding: 1em;
+  border-radius: var(--radius-md);
+  background-color: hsl(var(--muted));
+  overflow-x: auto;
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  padding: 0.2em 0.4em;
+  border-radius: var(--radius-sm);
+  background-color: hsl(var(--muted));
+}
+
+.prose pre code {
+  padding: 0;
+  background-color: transparent;
 }
 
 .prose blockquote {
-  border-left: 3px solid hsl(var(--border));
+  border-left: 3px solid hsl(var(--primary));
   padding-left: 1em;
   margin: 0.5em 0;
   color: hsl(var(--muted-foreground));
+  font-style: italic;
 }
 
 .prose table {
@@ -151,13 +247,40 @@
 .prose th,
 .prose td {
   border: 1px solid hsl(var(--border));
-  padding: 0.5em;
+  padding: 0.5em 0.75em;
   text-align: left;
 }
 
 .prose th {
   background: hsl(var(--muted));
+  font-weight: var(--font-semibold);
 }
+
+.prose a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose a:hover {
+  opacity: 0.8;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: var(--font-semibold);
+  line-height: 1.3;
+}
+
+.prose h1 { font-size: 1.5em; }
+.prose h2 { font-size: 1.25em; }
+.prose h3 { font-size: 1.125em; }
+.prose h4 { font-size: 1em; }
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
 
 /* Typing indicator animation */
 @keyframes bounce {
@@ -167,4 +290,126 @@
   30% {
     transform: translateY(-4px);
   }
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Slide in from right */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Slide in from left */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Scale in animation */
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Spin animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Animation utility classes */
+.animate-fade-in {
+  animation: fadeIn var(--duration-normal) var(--ease-out);
+}
+
+.animate-slide-in-right {
+  animation: slideInRight var(--duration-slow) var(--ease-out);
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft var(--duration-slow) var(--ease-out);
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--duration-normal) var(--ease-out);
+}
+
+/* ========================================
+   RESPONSIVE UTILITIES
+   ======================================== */
+
+/* Hide scrollbar on mobile */
+@media (max-width: 768px) {
+  .hide-scrollbar-mobile {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar-mobile::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Touch-friendly tap targets */
+@media (pointer: coarse) {
+  .tap-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ========================================
+   COMPONENT-SPECIFIC OVERRIDES
+   ======================================== */
+
+/* Card hover effect */
+.card-hover {
+  @apply transition-all;
+  transition-duration: var(--duration-fast);
+}
+
+.card-hover:hover {
+  @apply shadow-md;
+  transform: translateY(-2px);
+}
+
+/* Button press effect */
+.btn-press:active {
+  transform: scale(0.98);
+}
+
+/* Input focus glow */
+.input-glow:focus {
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
 }

@@ -50,13 +50,25 @@ export class ClawHubService {
         const entryPath = getClawHubCliEntryPath();
 
         this.cliEntryPath = entryPath;
-        if (!app.isPackaged && fs.existsSync(binPath)) {
+
+        // Prefer using node to run the entry script directly for better compatibility
+        // The bin wrapper is a shell script that may not work well with spawn() on all platforms
+        if (fs.existsSync(entryPath)) {
+            // Use node to run the CLI entry script directly
+            this.cliPath = process.execPath;
+            this.useNodeRunner = true;
+            console.log(`[ClawHub] Using node runner with entry: ${entryPath}`);
+        } else if (!app.isPackaged && fs.existsSync(binPath)) {
+            // Fallback to bin wrapper (only in development)
             this.cliPath = binPath;
             this.useNodeRunner = false;
+            console.log(`[ClawHub] Using bin wrapper: ${binPath}`);
         } else {
             this.cliPath = process.execPath;
             this.useNodeRunner = true;
+            console.log(`[ClawHub] Using node runner (fallback)`);
         }
+
         const esc = String.fromCharCode(27);
         const csi = String.fromCharCode(155);
         const pattern = `(?:${esc}|${csi})[[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]`;
@@ -70,7 +82,7 @@ export class ClawHubService {
     /**
      * Run a ClawHub CLI command
      */
-    private async runCommand(args: string[]): Promise<string> {
+    private async runCommand(args: string[], timeoutMs = 60000): Promise<string> {
         return new Promise((resolve, reject) => {
             if (this.useNodeRunner && !fs.existsSync(this.cliEntryPath)) {
                 reject(new Error(`ClawHub CLI entry not found at: ${this.cliEntryPath}`));
@@ -106,6 +118,19 @@ export class ClawHubService {
 
             let stdout = '';
             let stderr = '';
+            let resolved = false;
+            let timeoutId: NodeJS.Timeout | null = null;
+
+            // Set timeout to prevent hanging
+            timeoutId = setTimeout(() => {
+                if (!resolved) {
+                    resolved = true;
+                    child.kill();
+                    const timeoutError = new Error(`ClawHub command timed out after ${timeoutMs}ms: ${displayCommand}`);
+                    console.error(timeoutError.message);
+                    reject(timeoutError);
+                }
+            }, timeoutMs);
 
             child.stdout.on('data', (data) => {
                 stdout += data.toString();
@@ -116,16 +141,24 @@ export class ClawHubService {
             });
 
             child.on('error', (error) => {
-                console.error('ClawHub process error:', error);
-                reject(error);
+                if (timeoutId) clearTimeout(timeoutId);
+                if (!resolved) {
+                    resolved = true;
+                    console.error('ClawHub process error:', error);
+                    reject(error);
+                }
             });
 
             child.on('close', (code) => {
+                if (timeoutId) clearTimeout(timeoutId);
+                if (resolved) return; // Already resolved (timeout)
+
                 if (code !== 0 && code !== null) {
                     console.error(`ClawHub command failed with code ${code}`);
                     console.error('Stderr:', stderr);
                     reject(new Error(`Command failed: ${stderr || stdout}`));
                 } else {
+                    console.log(`ClawHub command completed: ${displayCommand}`);
                     resolve(stdout.trim());
                 }
             });
@@ -137,12 +170,11 @@ export class ClawHubService {
      */
     async search(params: ClawHubSearchParams): Promise<ClawHubSkillResult[]> {
         try {
-            // If query is empty, use 'explore' to show trending skills
-            if (!params.query || params.query.trim() === '') {
-                return this.explore({ limit: params.limit });
-            }
+            // If query is empty, use a default popular search to show trending skills
+            // Note: 'explore' command doesn't work in all environments, so we use search instead
+            const query = params.query?.trim() || 'tool';
 
-            const args = ['search', params.query];
+            const args = ['search', query];
             if (params.limit) {
                 args.push('--limit', String(params.limit));
             }
@@ -153,29 +185,57 @@ export class ClawHubService {
             }
 
             const lines = output.split('\n').filter(l => l.trim());
-            return lines.map(line => {
+            const results: ClawHubSkillResult[] = lines.map(line => {
                 const cleanLine = this.stripAnsi(line);
 
-                // Format could be: slug vversion description (score)
-                // Or sometimes: slug  vversion  description
-                const match = cleanLine.match(/^(\S+)\s+v?(\d+\.\S+)\s+(.+)$/);
-                if (match) {
-                    const slug = match[1];
-                    const version = match[2];
-                    let description = match[3];
-
-                    // Clean up score if present at the end
-                    description = description.replace(/\(\d+\.\d+\)$/, '').trim();
-
+                // Format 1: search results - "slug  Name  (score)"
+                // Example: "ai-agent-helper  AI Agent Helper  (3.536)"
+                const searchMatch = cleanLine.match(/^(\S+)\s+(.+?)\s+\((\d+\.\d+)\)$/);
+                if (searchMatch) {
                     return {
-                        slug,
-                        name: slug,
-                        version,
-                        description,
+                        slug: searchMatch[1],
+                        name: searchMatch[2],
+                        version: '', // Search results don't include version
+                        description: searchMatch[2],
                     };
                 }
+
+                // Format 2: list output - "slug vversion"
+                // Example: "apple-reminders  1.0.0"
+                const listMatch = cleanLine.match(/^(\S+)\s+v?(\d+\.\S+)$/);
+                if (listMatch) {
+                    return {
+                        slug: listMatch[1],
+                        name: listMatch[1],
+                        version: listMatch[2],
+                        description: '',
+                    };
+                }
+
                 return null;
             }).filter((s): s is ClawHubSkillResult => s !== null);
+
+            // Fetch stats for top results (limit to 10 for performance)
+            const statsLimit = 10;
+            const topResults = results.slice(0, statsLimit);
+            const statsResults = await Promise.all(
+                topResults.map(async (result) => {
+                    const stats = await this.inspectSkill(result.slug);
+                    return {
+                        ...result,
+                        downloads: stats.downloads,
+                        stars: stats.stars,
+                    };
+                })
+            );
+
+            // Merge stats back with original results
+            const statsMap = new Map(statsResults.map(r => [r.slug, r]));
+            return results.map(r => ({
+                ...r,
+                downloads: statsMap.get(r.slug)?.downloads ?? r.downloads,
+                stars: statsMap.get(r.slug)?.stars ?? r.stars,
+            }));
         } catch (error) {
             console.error('ClawHub search error:', error);
             return [];
@@ -215,6 +275,33 @@ export class ClawHubService {
         } catch (error) {
             console.error('ClawHub explore error:', error);
             return [];
+        }
+    }
+
+    /**
+     * Inspect a skill to get detailed stats (stars, downloads, etc.)
+     */
+    async inspectSkill(slug: string): Promise<{ stars?: number; downloads?: number; installsAllTime?: number }> {
+        try {
+            const output = await this.runCommand(['inspect', slug, '--json']);
+            if (!output) return {};
+
+            // Extract JSON from output (remove any non-JSON lines like "- Fetching skill")
+            const jsonMatch = output.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) return {};
+
+            const data = JSON.parse(jsonMatch[0]);
+            if (data.skill?.stats) {
+                return {
+                    stars: data.skill.stats.stars,
+                    downloads: data.skill.stats.downloads,
+                    installsAllTime: data.skill.stats.installsAllTime,
+                };
+            }
+            return {};
+        } catch (error) {
+            console.error(`ClawHub inspect error for ${slug}:`, error);
+            return {};
         }
     }
 

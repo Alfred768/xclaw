@@ -4,7 +4,7 @@
  * with markdown, thinking sections, images, and tool cards.
  */
 import { useState, useCallback, memo } from 'react';
-import { User, Sparkles, Copy, Check, ChevronDown, ChevronRight, Wrench, FileText, Film, Music, FileArchive, File } from 'lucide-react';
+import { User, Sparkle, Copy, Check, CaretDown, CaretRight, Wrench, FileText, FilmStrip, MusicNote, FileZip, File } from '@phosphor-icons/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
@@ -81,10 +81,10 @@ export const ChatMessage = memo(function ChatMessage({
               className="h-full w-full object-cover"
             />
           ) : (
-            <User className="h-4 w-4" />
+            <User className="h-4 w-4" weight="fill" />
           )
         ) : (
-          <Sparkles className="h-4 w-4" />
+          <Sparkle className="h-4 w-4" weight="fill" />
         )}
       </div>
 
@@ -299,7 +299,6 @@ function MessageBubble({
     <div
       className={cn(
         'relative rounded-2xl px-4 py-3',
-        !isUser && 'w-full',
         isUser
           ? 'bg-primary text-primary-foreground'
           : 'bg-muted',
@@ -361,7 +360,7 @@ function MessageBubble({
             className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={copyContent}
           >
-            {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+            {copied ? <Check className="h-3 w-3 text-green-500" weight="bold" /> : <Copy className="h-3 w-3" />}
           </Button>
         </div>
       )}
@@ -380,7 +379,7 @@ function ThinkingBlock({ content }: { content: string }) {
         className="flex items-center gap-2 w-full px-3 py-2 text-muted-foreground hover:text-foreground transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
-        {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        {expanded ? <CaretDown className="h-3.5 w-3.5" /> : <CaretRight className="h-3.5 w-3.5" />}
         <span className="font-medium">Thinking</span>
       </button>
       {expanded && (
@@ -404,12 +403,12 @@ function formatFileSize(bytes: number): string {
 }
 
 function FileIcon({ mimeType, className }: { mimeType: string; className?: string }) {
-  if (mimeType.startsWith('video/')) return <Film className={className} />;
-  if (mimeType.startsWith('audio/')) return <Music className={className} />;
-  if (mimeType.startsWith('text/') || mimeType === 'application/json' || mimeType === 'application/xml') return <FileText className={className} />;
-  if (mimeType.includes('zip') || mimeType.includes('compressed') || mimeType.includes('archive') || mimeType.includes('tar') || mimeType.includes('rar') || mimeType.includes('7z')) return <FileArchive className={className} />;
-  if (mimeType === 'application/pdf') return <FileText className={className} />;
-  return <File className={className} />;
+  if (mimeType.startsWith('video/')) return <FilmStrip className={className} weight="regular" />;
+  if (mimeType.startsWith('audio/')) return <MusicNote className={className} weight="regular" />;
+  if (mimeType.startsWith('text/') || mimeType === 'application/json' || mimeType === 'application/xml') return <FileText className={className} weight="regular" />;
+  if (mimeType.includes('zip') || mimeType.includes('compressed') || mimeType.includes('archive') || mimeType.includes('tar') || mimeType.includes('rar') || mimeType.includes('7z')) return <FileZip className={className} weight="regular" />;
+  if (mimeType === 'application/pdf') return <FileText className={className} weight="regular" />;
+  return <File className={className} weight="regular" />;
 }
 
 function FileCard({ file }: { file: AttachedFileMeta }) {
@@ -437,9 +436,9 @@ function ToolCard({ name, input }: { name: string; input: unknown }) {
         className="flex items-center gap-2 w-full px-3 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
-        <Wrench className="h-3.5 w-3.5" />
+        <Wrench className="h-3.5 w-3.5" weight="regular" />
         <span className="font-mono text-xs">{name}</span>
-        {expanded ? <ChevronDown className="h-3 w-3 ml-auto" /> : <ChevronRight className="h-3 w-3 ml-auto" />}
+        {expanded ? <CaretDown className="h-3 w-3 ml-auto" /> : <CaretRight className="h-3 w-3 ml-auto" />}
       </button>
       {expanded && input != null && (
         <pre className="px-3 pb-2 text-xs text-muted-foreground overflow-x-auto">

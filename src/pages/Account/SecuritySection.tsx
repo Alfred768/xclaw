@@ -3,7 +3,7 @@
  * Displays account bindings and logout option
  */
 import { useTranslation } from 'react-i18next';
-import { Shield, Check, LogOut, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Shield, Check, SignOut, Warning, ArrowSquareOut } from '@phosphor-icons/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,37 +11,81 @@ import { useAccountStore } from '@/stores/account';
 import { useAuthStore } from '@/stores/auth';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { initAuthSession } from '@/lib/supabase';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function SecuritySection() {
   const { t } = useTranslation('account');
   const { profile, fetchProfile } = useAccountStore();
-  const { logout, user } = useAuthStore();
+  const bindingSubscribedRef = useRef(false);
+  const bindSuccessMessage = t('security.bindSuccess', { defaultValue: 'Account bound successfully' });
+  const bindExpiredMessage = t('security.bindExpired', { defaultValue: 'Binding session expired' });
+  const bindFailedMessage = t('security.bindFailed', { defaultValue: 'Failed to bind account' });
+  const logoutConfirmMessage = t('security.logoutConfirm');
+  const logoutSuccessMessage = t('security.logoutSuccess', { defaultValue: 'Logged out successfully' });
+  const {
+    authStatus,
+    initAuthFlow,
+    loginToken,
+    logout,
+    oauthUrl,
+    user,
+  } = useAuthStore();
   const navigate = useNavigate();
 
-  // Fetch latest profile data when component mounts
   useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+    if (!oauthUrl || !loginToken || bindingSubscribedRef.current) {
+      return;
+    }
+
+    bindingSubscribedRef.current = true;
+
+    const unsubscribe = useAuthStore.getState().subscribeToAuth(async () => {
+      const fullUser = await useAuthStore.getState().completeAuthFlow();
+
+      if (!fullUser) {
+        return;
+      }
+
+      await useAccountStore.getState().fetchProfile();
+      toast.success(bindSuccessMessage);
+      useAuthStore.getState().resetAuthFlow();
+    });
+
+    return () => {
+      bindingSubscribedRef.current = false;
+      unsubscribe?.();
+    };
+  }, [bindSuccessMessage, loginToken, oauthUrl]);
+
+  useEffect(() => {
+    if (authStatus === 'expired') {
+      toast.error(bindExpiredMessage);
+      useAuthStore.getState().resetAuthFlow();
+    }
+
+    if (authStatus === 'error') {
+      toast.error(bindFailedMessage);
+      useAuthStore.getState().resetAuthFlow();
+    }
+  }, [authStatus, bindExpiredMessage, bindFailedMessage]);
 
   // Handle Alipay binding
   const handleBindAlipay = async () => {
     if (!user?.id) return;
-    const result = await initAuthSession('alipay', user.id);
+    const result = await initAuthFlow('alipay');
     if (result?.oauthUrl) {
       // Open in new window to avoid closing the app on Electron
       window.open(result.oauthUrl, '_blank', 'width=600,height=700');
     } else {
-      toast.error(t('security.bindFailed', { defaultValue: 'Failed to initiate binding' }));
+      toast.error(bindFailedMessage);
     }
   };
 
   const handleLogout = async () => {
-    if (confirm(t('security.logoutConfirm'))) {
+    if (confirm(logoutConfirmMessage)) {
       await logout();
-      toast.success(t('security.logoutSuccess', { defaultValue: 'Logged out successfully' }));
-      navigate('/');
+      toast.success(logoutSuccessMessage);
+      navigate('/setup');
     }
   };
 
@@ -51,7 +95,7 @@ export function SecuritySection() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
+            <Shield className="h-5 w-5" weight="regular" />
             {t('security.bindings')}
           </CardTitle>
           <CardDescription>{t('security.description')}</CardDescription>
@@ -75,12 +119,17 @@ export function SecuritySection() {
             <div className="flex items-center gap-2">
               {profile?.alipay_user_id ? (
                 <Badge variant="default" className="bg-green-500">
-                  <Check className="h-3 w-3 mr-1" />
+                  <Check className="h-3 w-3 mr-1" weight="bold" />
                   {t('security.alipayBound')}
                 </Badge>
               ) : (
-                <Button variant="outline" size="sm" onClick={handleBindAlipay}>
-                  <ExternalLink className="h-3 w-3 mr-1" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBindAlipay}
+                  disabled={authStatus === 'pending' || authStatus === 'scanning'}
+                >
+                  <ArrowSquareOut className="h-3 w-3 mr-1" weight="regular" />
                   {t('security.bind')}
                 </Button>
               )}
@@ -93,7 +142,7 @@ export function SecuritySection() {
       <Card className="border-destructive/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5" />
+            <Warning className="h-5 w-5" weight="fill" />
             {t('security.dangerZone', { defaultValue: 'Danger Zone' })}
           </CardTitle>
         </CardHeader>
@@ -106,7 +155,7 @@ export function SecuritySection() {
               </p>
             </div>
             <Button variant="destructive" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
+              <SignOut className="h-4 w-4 mr-2" weight="regular" />
               {t('security.logout')}
             </Button>
           </div>

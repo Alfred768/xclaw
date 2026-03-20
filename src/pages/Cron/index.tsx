@@ -8,19 +8,19 @@ import {
   Clock,
   Play,
   Pause,
-  Trash2,
-  Edit,
-  RefreshCw,
+  Trash,
+  PencilSimple,
+  ArrowClockwise,
   X,
   Calendar,
-  AlertCircle,
-  CheckCircle2,
+  WarningCircle,
+  CheckCircle,
   XCircle,
-  MessageSquare,
-  Loader2,
+  ChatCircle,
+  CircleNotch,
   Timer,
-  History,
-} from 'lucide-react';
+  ClockCounterClockwise,
+} from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -344,12 +344,12 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
             <Button onClick={handleSubmit} disabled={saving}>
               {saving ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <CircleNotch className="h-4 w-4 mr-2 animate-spin" />
                   Saving...
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  <CheckCircle className="h-4 w-4 mr-2" />
                   {job ? t('dialog.saveChanges') : t('dialog.createTitle')}
                 </>
               )}
@@ -449,10 +449,10 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
 
           {job.lastRun && (
             <span className="flex items-center gap-1">
-              <History className="h-4 w-4" />
+              <ClockCounterClockwise className="h-4 w-4" />
               {t('card.last')}: {formatRelativeTime(job.lastRun.time)}
               {job.lastRun.success ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-green-500" />
               ) : (
                 <XCircle className="h-4 w-4 text-red-500" />
               )}
@@ -470,7 +470,7 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
         {/* Last Run Error */}
         {job.lastRun && !job.lastRun.success && job.lastRun.error && (
           <div className="flex items-start gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
-            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <WarningCircle className="h-4 w-4 mt-0.5 shrink-0" />
             <span>{job.lastRun.error}</span>
           </div>
         )}
@@ -484,7 +484,7 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
             disabled={triggering}
           >
             {triggering ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <CircleNotch className="h-4 w-4 animate-spin" />
             ) : (
               <Play className="h-4 w-4" />
             )}
@@ -495,7 +495,7 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
             <span className="ml-1">Edit</span>
           </Button>
           <Button variant="ghost" size="sm" onClick={handleDelete}>
-            <Trash2 className="h-4 w-4 text-destructive" />
+            <Trash className="h-4 w-4 text-destructive" />
             <span className="ml-1 text-destructive">Delete</span>
           </Button>
         </div>
@@ -573,7 +573,7 @@ export function Cron() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchJobs} disabled={!isGatewayRunning}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <ArrowClockwise className="h-4 w-4 mr-2" />
             {t('refresh')}
           </Button>
           <Button
@@ -593,7 +593,7 @@ export function Cron() {
       {!isGatewayRunning && (
         <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-900/10">
           <CardContent className="py-4 flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-yellow-600" />
+            <WarningCircle className="h-5 w-5 text-yellow-600" />
             <span className="text-yellow-700 dark:text-yellow-400">
               {t('gatewayWarning')}
             </span>
@@ -661,7 +661,7 @@ export function Cron() {
       {error && (
         <Card className="border-destructive">
           <CardContent className="py-4 text-destructive flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
+            <WarningCircle className="h-5 w-5" />
             {error}
           </CardContent>
         </Card>

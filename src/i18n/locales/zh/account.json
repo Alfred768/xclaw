@@ -14,7 +14,8 @@
     "changeAvatar": "更换头像",
     "displayName": "显示名称",
     "displayNamePlaceholder": "输入您的显示名称",
-    "userId": "用户 ID",
+    "userId": "账户 ID",
+    "userIdPending": "刷新后可见",
     "memberSince": "注册时间",
     "saving": "保存中...",
     "saved": "保存成功"
@@ -31,7 +32,16 @@
     "wechatNotBound": "未绑定",
     "bind": "绑定",
     "logout": "退出登录",
-    "logoutConfirm": "确定要退出登录吗？"
+    "logoutConfirm": "确定要退出登录吗？",
+    "logoutSuccess": "已成功退出登录",
+    "bindSuccess": "账户绑定成功",
+    "bindExpired": "绑定会话已过期",
+    "bindFailed": "账户绑定失败"
+  },
+  "unauthenticated": {
+    "title": "请先登录后再管理账户",
+    "description": "账户绑定、个人资料编辑和 API 密钥管理都需要先登录。",
+    "action": "前往登录"
   },
   "usage": {
     "title": "使用情况",

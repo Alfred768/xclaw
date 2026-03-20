@@ -5,22 +5,22 @@
  */
 import { NavLink } from 'react-router-dom';
 import {
-  Home,
-  MessageSquare,
-  Radio,
-  Puzzle,
+  House,
+  ChatCircle,
+  Broadcast,
+  PuzzlePiece,
   Clock,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
+  Gear,
+  CaretLeft,
+  CaretRight,
   Terminal,
-  ExternalLink,
-  ListTodo,
-  Newspaper,
-  BarChart2,
+  ArrowSquareOut,
+  CheckSquare,
+  NewspaperClipping,
+  ChartBar,
   User,
   CreditCard,
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore } from '@/stores/settings';
 import { Button } from '@/components/ui/button';
@@ -90,17 +90,17 @@ export function Sidebar() {
   const { t } = useTranslation();
 
   const navItems = [
-    { to: '/', icon: <MessageSquare className="h-5 w-5" />, label: t('sidebar.chat') },
-    { to: '/cron', icon: <Clock className="h-5 w-5" />, label: t('sidebar.cronTasks') },
-    { to: '/skills', icon: <Puzzle className="h-5 w-5" />, label: t('sidebar.skills') },
-    { to: '/channels', icon: <Radio className="h-5 w-5" />, label: t('sidebar.channels') },
-    { to: '/dashboard', icon: <Home className="h-5 w-5" />, label: t('sidebar.dashboard') },
-    { to: '/todo', icon: <ListTodo className="h-5 w-5" />, label: t('sidebar.todo') },
-    { to: '/briefing', icon: <Newspaper className="h-5 w-5" />, label: t('sidebar.briefing') },
-    { to: '/subscription', icon: <CreditCard className="h-5 w-5" />, label: t('sidebar.subscription') },
-    { to: '/usage', icon: <BarChart2 className="h-5 w-5" />, label: t('sidebar.usage') },
-    { to: '/account', icon: <User className="h-5 w-5" />, label: t('sidebar.account') },
-    { to: '/settings', icon: <Settings className="h-5 w-5" />, label: t('sidebar.settings') },
+    { to: '/', icon: <ChatCircle className="h-5 w-5" weight="regular" />, label: t('sidebar.chat') },
+    { to: '/cron', icon: <Clock className="h-5 w-5" weight="regular" />, label: t('sidebar.cronTasks') },
+    { to: '/skills', icon: <PuzzlePiece className="h-5 w-5" weight="regular" />, label: t('sidebar.skills') },
+    { to: '/channels', icon: <Broadcast className="h-5 w-5" weight="regular" />, label: t('sidebar.channels') },
+    { to: '/dashboard', icon: <House className="h-5 w-5" weight="regular" />, label: t('sidebar.dashboard') },
+    { to: '/todo', icon: <CheckSquare className="h-5 w-5" weight="regular" />, label: t('sidebar.todo') },
+    { to: '/briefing', icon: <NewspaperClipping className="h-5 w-5" weight="regular" />, label: t('sidebar.briefing') },
+    { to: '/subscription', icon: <CreditCard className="h-5 w-5" weight="regular" />, label: t('sidebar.subscription') },
+    { to: '/usage', icon: <ChartBar className="h-5 w-5" weight="regular" />, label: t('sidebar.usage') },
+    { to: '/account', icon: <User className="h-5 w-5" weight="regular" />, label: t('sidebar.account') },
+    { to: '/settings', icon: <Gear className="h-5 w-5" weight="regular" />, label: t('sidebar.settings') },
   ];
 
   return (
@@ -132,9 +132,9 @@ export function Sidebar() {
             className="w-full justify-start"
             onClick={openDevConsole}
           >
-            <Terminal className="h-4 w-4 mr-2" />
+            <Terminal className="h-4 w-4 mr-2" weight="regular" />
             {t('sidebar.devConsole')}
-            <ExternalLink className="h-3 w-3 ml-auto" />
+            <ArrowSquareOut className="h-3 w-3 ml-auto" weight="regular" />
           </Button>
         )}
 
@@ -145,9 +145,9 @@ export function Sidebar() {
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
         >
           {sidebarCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
+            <CaretRight className="h-4 w-4" weight="bold" />
           ) : (
-            <ChevronLeft className="h-4 w-4" />
+            <CaretLeft className="h-4 w-4" weight="bold" />
           )}
         </Button>
       </div>

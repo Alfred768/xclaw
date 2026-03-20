@@ -7,14 +7,14 @@ import {
   Sun,
   Moon,
   Monitor,
-  RefreshCw,
+  ArrowClockwise,
   Terminal,
-  ExternalLink,
+  ArrowSquareOut,
   Key,
   Download,
   Copy,
   FileText,
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -238,7 +238,7 @@ export function Settings() {
                 size="sm"
                 onClick={() => setTheme('light')}
               >
-                <Sun className="h-4 w-4 mr-2" />
+                <Sun className="h-4 w-4 mr-2" weight="regular" />
                 {t('appearance.light')}
               </Button>
               <Button
@@ -246,7 +246,7 @@ export function Settings() {
                 size="sm"
                 onClick={() => setTheme('dark')}
               >
-                <Moon className="h-4 w-4 mr-2" />
+                <Moon className="h-4 w-4 mr-2" weight="regular" />
                 {t('appearance.dark')}
               </Button>
               <Button
@@ -254,7 +254,7 @@ export function Settings() {
                 size="sm"
                 onClick={() => setTheme('system')}
               >
-                <Monitor className="h-4 w-4 mr-2" />
+                <Monitor className="h-4 w-4 mr-2" weight="regular" />
                 {t('appearance.system')}
               </Button>
             </div>
@@ -281,7 +281,7 @@ export function Settings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5" />
+            <Key className="h-5 w-5" weight="regular" />
             {t('aiProviders.title')}
           </CardTitle>
           <CardDescription>{t('aiProviders.description')}</CardDescription>
@@ -318,11 +318,11 @@ export function Settings() {
                 {gatewayStatus.state}
               </Badge>
               <Button variant="outline" size="sm" onClick={restartGateway}>
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <ArrowClockwise className="h-4 w-4 mr-2" weight="bold" />
                 {t('common:actions.restart')}
               </Button>
               <Button variant="outline" size="sm" onClick={handleShowLogs}>
-                <FileText className="h-4 w-4 mr-2" />
+                <FileText className="h-4 w-4 mr-2" weight="regular" />
                 {t('gateway.logs')}
               </Button>
             </div>
@@ -334,7 +334,7 @@ export function Settings() {
                 <p className="font-medium text-sm">{t('gateway.appLogs')}</p>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleOpenLogDir}>
-                    <ExternalLink className="h-3 w-3 mr-1" />
+                    <ArrowSquareOut className="h-3 w-3 mr-1" weight="regular" />
                     {t('gateway.openFolder')}
                   </Button>
                   <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowLogs(false)}>
@@ -369,7 +369,7 @@ export function Settings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Download className="h-5 w-5" />
+            <Download className="h-5 w-5" weight="regular" />
             {t('updates.title')}
           </CardTitle>
           <CardDescription>{t('updates.description')}</CardDescription>
@@ -446,9 +446,9 @@ export function Settings() {
                 {t('developer.consoleDesc')}
               </p>
               <Button variant="outline" onClick={openDevConsole}>
-                <Terminal className="h-4 w-4 mr-2" />
+                <Terminal className="h-4 w-4 mr-2" weight="regular" />
                 {t('developer.openConsole')}
-                <ExternalLink className="h-3 w-3 ml-2" />
+                <ArrowSquareOut className="h-3 w-3 ml-2" weight="regular" />
               </Button>
               <p className="text-xs text-muted-foreground">
                 {t('developer.consoleNote')}
@@ -471,7 +471,7 @@ export function Settings() {
                     onClick={refreshControlUiInfo}
                     disabled={!devModeUnlocked}
                   >
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                    <ArrowClockwise className="h-4 w-4 mr-2" weight="bold" />
                     {t('common:actions.load')}
                   </Button>
                   <Button
@@ -480,7 +480,7 @@ export function Settings() {
                     onClick={handleCopyGatewayToken}
                     disabled={!controlUiInfo?.token}
                   >
-                    <Copy className="h-4 w-4 mr-2" />
+                    <Copy className="h-4 w-4 mr-2" weight="regular" />
                     {t('common:actions.copy')}
                   </Button>
                 </div>
@@ -512,7 +512,7 @@ export function Settings() {
                       onClick={handleCopyCliCommand}
                       disabled={!openclawCliCommand}
                     >
-                      <Copy className="h-4 w-4 mr-2" />
+                      <Copy className="h-4 w-4 mr-2" weight="regular" />
                       {t('common:actions.copy')}
                     </Button>
                   </div>
@@ -524,7 +524,7 @@ export function Settings() {
                         onClick={handleInstallCliCommand}
                         disabled={installingCli}
                       >
-                        <Terminal className="h-4 w-4 mr-2" />
+                        <Terminal className="h-4 w-4 mr-2" weight="regular" />
                         {t('developer.installCmd')}
                       </Button>
                       <p className="text-xs text-muted-foreground">

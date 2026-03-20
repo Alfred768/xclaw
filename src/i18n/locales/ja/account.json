@@ -14,7 +14,8 @@
     "changeAvatar": "アバターを変更",
     "displayName": "表示名",
     "displayNamePlaceholder": "表示名を入力",
-    "userId": "ユーザーID",
+    "userId": "アカウントID",
+    "userIdPending": "更新後に表示されます",
     "memberSince": "登録日",
     "saving": "保存中...",
     "saved": "保存成功"
@@ -31,7 +32,16 @@
     "wechatNotBound": "未連携",
     "bind": "連携",
     "logout": "ログアウト",
-    "logoutConfirm": "ログアウトしてもよろしいですか？"
+    "logoutConfirm": "ログアウトしてもよろしいですか？",
+    "logoutSuccess": "ログアウトしました",
+    "bindSuccess": "アカウントの連携に成功しました",
+    "bindExpired": "連携セッションの有効期限が切れました",
+    "bindFailed": "アカウントの連携に失敗しました"
+  },
+  "unauthenticated": {
+    "title": "アカウントを管理するにはサインインしてください",
+    "description": "アカウント連携、プロフィール編集、API キー管理にはサインインが必要です。",
+    "action": "サインインへ"
   },
   "usage": {
     "title": "使用状況",

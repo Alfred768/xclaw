@@ -6,12 +6,12 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import {
-  CheckCircle2,
-  Loader2,
-  RefreshCw,
-  Smartphone,
+  CheckCircle,
+  CircleNotch,
+  ArrowClockwise,
+  DeviceMobile,
   Wallet,
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
@@ -25,13 +25,13 @@ type Provider = 'wechat' | 'alipay';
 
 const providerConfig: Record<Provider, {
   id: Provider;
-  icon: typeof Smartphone;
+  icon: typeof DeviceMobile;
   color: string;
   bgColor: string;
 }> = {
   wechat: {
     id: 'wechat',
-    icon: Smartphone,
+    icon: DeviceMobile,
     color: 'text-green-600',
     bgColor: 'bg-green-500 hover:bg-green-600',
   },
@@ -130,7 +130,7 @@ export function AuthContent({ onComplete }: AuthContentProps) {
             )}
           >
             <div className={cn('rounded-full p-4', config.bgColor, 'text-white')}>
-              <Icon className="h-8 w-8" />
+              <Icon className="h-8 w-8" weight="regular" />
             </div>
             <span className="font-medium">{t(`auth.${provider}`)}</span>
           </button>
@@ -181,7 +181,7 @@ export function AuthContent({ onComplete }: AuthContentProps) {
 
         {authStatus === 'scanning' && (
           <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <CircleNotch className="h-4 w-4 animate-spin" weight="bold" />
             <span className="text-sm">{t('auth.scanning')}</span>
           </div>
         )}
@@ -192,7 +192,7 @@ export function AuthContent({ onComplete }: AuthContentProps) {
           onClick={handleRefresh}
           className="gap-2"
         >
-          <RefreshCw className="h-4 w-4" />
+          <ArrowClockwise className="h-4 w-4" weight="bold" />
           {t('auth.refreshQR')}
         </Button>
       </div>
@@ -209,7 +209,7 @@ export function AuthContent({ onComplete }: AuthContentProps) {
         className="flex flex-col items-center space-y-4"
       >
         <div className="flex items-center justify-center rounded-full bg-green-100 p-3">
-          <CheckCircle2 className="h-8 w-8 text-green-600" />
+          <CheckCircle className="h-8 w-8 text-green-600" weight="fill" />
         </div>
 
         <h3 className="text-xl font-semibold">{t('auth.loginSuccess')}</h3>

@@ -5,7 +5,7 @@
  * are in the toolbar; messages render with markdown + streaming.
  */
 import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, Bot, MessageSquare, Sparkles } from 'lucide-react';
+import { WarningCircle, Robot, ChatCircle, Sparkle } from '@phosphor-icons/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useChatStore, type RawMessage } from '@/stores/chat';
 import { useGatewayStore } from '@/stores/gateway';
@@ -70,7 +70,7 @@ export function Chat() {
   if (!isGatewayRunning) {
     return (
       <div className="flex h-[calc(100vh-8rem)] flex-col items-center justify-center text-center p-8">
-        <AlertCircle className="h-12 w-12 text-yellow-500 mb-4" />
+        <WarningCircle className="h-12 w-12 text-yellow-500 mb-4" weight="fill" />
         <h2 className="text-xl font-semibold mb-2">{t('gatewayNotRunning')}</h2>
         <p className="text-muted-foreground max-w-md">
           {t('gatewayRequired')}
@@ -158,7 +158,7 @@ export function Chat() {
         <div className="px-4 py-2 bg-destructive/10 border-t border-destructive/20">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <p className="text-sm text-destructive flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
+              <WarningCircle className="h-4 w-4" weight="fill" />
               {error}
             </p>
             <button
@@ -189,7 +189,7 @@ function WelcomeScreen() {
   return (
     <div className="flex flex-col items-center justify-center text-center py-20">
       <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-6">
-        <Bot className="h-8 w-8 text-white" />
+        <Robot className="h-8 w-8 text-white" weight="fill" />
       </div>
       <h2 className="text-2xl font-bold mb-2">{t('welcome.title')}</h2>
       <p className="text-muted-foreground mb-8 max-w-md">
@@ -198,12 +198,12 @@ function WelcomeScreen() {
 
       <div className="grid grid-cols-2 gap-4 max-w-lg w-full">
         {[
-          { icon: MessageSquare, title: t('welcome.askQuestions'), desc: t('welcome.askQuestionsDesc') },
-          { icon: Sparkles, title: t('welcome.creativeTasks'), desc: t('welcome.creativeTasksDesc') },
+          { icon: ChatCircle, title: t('welcome.askQuestions'), desc: t('welcome.askQuestionsDesc') },
+          { icon: Sparkle, title: t('welcome.creativeTasks'), desc: t('welcome.creativeTasksDesc') },
         ].map((item, i) => (
           <Card key={i} className="text-left">
             <CardContent className="p-4">
-              <item.icon className="h-6 w-6 text-primary mb-2" />
+              <item.icon className="h-6 w-6 text-primary mb-2" weight="regular" />
               <h3 className="font-medium">{item.title}</h3>
               <p className="text-sm text-muted-foreground">{item.desc}</p>
             </CardContent>
@@ -220,7 +220,7 @@ function TypingIndicator() {
   return (
     <div className="flex gap-3">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
-        <Sparkles className="h-4 w-4" />
+        <Sparkle className="h-4 w-4" weight="fill" />
       </div>
       <div className="bg-muted rounded-2xl px-4 py-3">
         <div className="flex gap-1">

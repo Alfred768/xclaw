@@ -10,6 +10,7 @@ export type AuthProvider = 'wechat' | 'alipay';
 
 export interface AuthUser {
   id: string;
+  publicId?: string;
   email?: string;
   displayName?: string;
   avatarUrl?: string;
@@ -146,7 +147,8 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, authProvider: provider });
 
         try {
-          const result = await initAuthSession(provider);
+          const accessToken = get().accessToken;
+          const result = await initAuthSession(provider, accessToken ?? undefined);
           if (!result) {
             set({ isLoading: false, authStatus: 'error' });
             return null;
@@ -233,6 +235,7 @@ export const useAuthStore = create<AuthState>()(
             refreshToken?: string;
             user: {
               id: string;
+              public_id?: string;
               email?: string;
               display_name?: string;
               avatar_url?: string;
@@ -247,6 +250,7 @@ export const useAuthStore = create<AuthState>()(
 
           const user: AuthUser = {
             id: sessionResult.user.id,
+            publicId: sessionResult.user.public_id,
             email: sessionResult.user.email,
             displayName: sessionResult.user.display_name,
             avatarUrl: sessionResult.user.avatar_url,

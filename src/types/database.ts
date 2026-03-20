@@ -70,6 +70,7 @@ export interface Database {
       user_profiles: {
         Row: {
           id: string;
+          public_id: string;
           display_name: string | null;
           avatar_url: string | null;
           wechat_openid: string | null;
@@ -84,6 +85,7 @@ export interface Database {
         };
         Insert: {
           id: string;
+          public_id?: string;
           display_name?: string | null;
           avatar_url?: string | null;
           wechat_openid?: string | null;
@@ -98,6 +100,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          public_id?: string;
           display_name?: string | null;
           avatar_url?: string | null;
           wechat_openid?: string | null;

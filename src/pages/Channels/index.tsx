@@ -5,23 +5,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
-  Radio,
-  RefreshCw,
-  Trash2,
+  Broadcast,
+  ArrowClockwise,
+  Trash,
   Power,
-  PowerOff,
   QrCode,
-  Loader2,
+  CircleNotch,
   X,
-  ExternalLink,
-  BookOpen,
+  ArrowSquareOut,
+  Book,
   Eye,
-  EyeOff,
+  EyeSlash,
   Check,
-  AlertCircle,
+  WarningCircle,
   CheckCircle,
   ShieldCheck,
-} from 'lucide-react';
+  Radio,
+} from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -117,7 +117,7 @@ export function Channels() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchChannels}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <ArrowClockwise className="h-4 w-4 mr-2" />
             {t('refresh')}
           </Button>
           <Button onClick={() => setShowAddDialog(true)}>
@@ -159,7 +159,7 @@ export function Channels() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="rounded-full bg-slate-100 p-3 dark:bg-slate-800">
-                <PowerOff className="h-6 w-6 text-slate-600" />
+                <Power className="h-6 w-6 text-slate-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{channels.length - connectedCount}</p>
@@ -174,7 +174,7 @@ export function Channels() {
       {gatewayStatus.state !== 'running' && (
         <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-900/10">
           <CardContent className="py-4 flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-yellow-500" />
+            <WarningCircle className="h-5 w-5 text-yellow-500" />
             <span className="text-yellow-700 dark:text-yellow-400">
               {t('gatewayWarning')}
             </span>
@@ -322,7 +322,7 @@ function ChannelCard({ channel, onDelete }: ChannelCardProps) {
             className="text-destructive hover:text-destructive"
             onClick={onDelete}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash className="h-4 w-4" />
           </Button>
         </div>
       </CardContent>
@@ -707,7 +707,7 @@ function AddChannelDialog({ selectedType, onSelectType, onClose, onChannelAdded 
           ) : loadingConfig ? (
             // Loading saved config
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <CircleNotch className="h-6 w-6 animate-spin text-muted-foreground" />
               <span className="ml-2 text-sm text-muted-foreground">{t('dialog.loadingConfig')}</span>
             </div>
           ) : (
@@ -730,9 +730,9 @@ function AddChannelDialog({ selectedType, onSelectType, onClose, onChannelAdded 
                     className="p-0 h-auto text-sm"
                     onClick={openDocs}
                   >
-                    <BookOpen className="h-3 w-3 mr-1" />
+                    <Book className="h-3 w-3 mr-1" />
                     {t('dialog.viewDocs')}
-                    <ExternalLink className="h-3 w-3 ml-1" />
+                    <ArrowSquareOut className="h-3 w-3 ml-1" />
                   </Button>
                 </div>
                 <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
@@ -773,7 +773,7 @@ function AddChannelDialog({ selectedType, onSelectType, onClose, onChannelAdded 
                     {validationResult.valid ? (
                       <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" />
                     ) : (
-                      <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                      <WarningCircle className="h-4 w-4 mt-0.5 shrink-0" />
                     )}
                     <div className="min-w-0">
                       <h4 className="font-medium mb-1">
@@ -824,7 +824,7 @@ function AddChannelDialog({ selectedType, onSelectType, onClose, onChannelAdded 
                     >
                       {validating ? (
                         <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <CircleNotch className="h-4 w-4 mr-2 animate-spin" />
                           {t('dialog.validating')}
                         </>
                       ) : (
@@ -841,7 +841,7 @@ function AddChannelDialog({ selectedType, onSelectType, onClose, onChannelAdded 
                   >
                     {connecting ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <CircleNotch className="h-4 w-4 mr-2 animate-spin" />
                         {meta?.connectionType === 'qr' ? t('dialog.generatingQR') : t('dialog.validatingAndSaving')}
                       </>
                     ) : meta?.connectionType === 'qr' ? (
