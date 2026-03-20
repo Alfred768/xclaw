@@ -1,0 +1,28 @@
+{
+  "title": "トークン使用量",
+  "subtitle": "LLMトークン消費をリアルタイムで追跡",
+  "timeRange": {
+    "label": "期間",
+    "last7Days": "過去7日間",
+    "last30Days": "過去30日間",
+    "last90Days": "過去90日間",
+    "thisMonth": "今月",
+    "lastMonth": "先月"
+  },
+  "refresh": "更新",
+  "clear": "データクリア",
+  "metrics": {
+    "totalTokens": "トークン総数",
+    "apiRequests": "APIリクエスト数"
+  },
+  "charts": {
+    "tokenUsageOverTime": "トークン使用推移",
+    "modelBreakdown": "モデル別使用状況"
+  },
+  "table": {
+    "model": "モデル",
+    "requests": "リクエスト数",
+    "tokens": "トークン数"
+  },
+  "noData": "使用データがありません。チャットを開始してトークン使用量を表示してください。"
+}

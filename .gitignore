@@ -1,0 +1,86 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+dist-electron/
+release/
+*.local
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment
+.env
+.env.local
+.env.*.local
+supabase/.env.local
+
+# Public export sensitive paths
+supabase/
+alipay-auth/
+auth-site/
+docs/alipay_login.md
+docs/yunwu-api.md
+docs/DATABASE_MIGRATION_GUIDE.md
+docs/avatar_feature.md
+docs/superpowers/
+.env*
+scripts/test-*.sh
+scripts/migrate-*.sh
+scripts/migrate-*.mjs
+plan.txt
+.impeccable.md
+Keys/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Cache
+.cache/
+.turbo/
+*.tsbuildinfo
+
+# Electron
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.rpm
+
+resources/bin
+
+# Secrets
+*.p12
+*.pem
+*.key
+
+build/
+
+.cursor/
+.pnpm-store/
+
+# Local user data (do not commit)
+.openclaw/
+.clawx-data/
