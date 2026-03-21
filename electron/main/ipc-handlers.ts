@@ -1768,6 +1768,42 @@ function registerAppHandlers(): void {
     return process.platform;
   });
 
+  // Get system locale (OS-level language, not app/Chromium locale)
+  ipcMain.handle('system:getLocale', async () => {
+    try {
+      const { execSync } = await import('node:child_process');
+      const platform = process.platform;
+
+      let osLocale = '';
+
+      if (platform === 'darwin') {
+        // macOS: use system pref directly
+        osLocale = execSync('defaults read -g AppleLocale 2>/dev/null || echo ""', { encoding: 'utf8', timeout: 5000 }).trim();
+      } else if (platform === 'win32') {
+        // Windows: query registry for locale
+        try {
+          osLocale = execSync('powershell -Command "(Get-Culture).Name"', { encoding: 'utf8', timeout: 5000 }).trim();
+        } catch {
+          osLocale = execSync('cmd /c "chcp"', { encoding: 'utf8', timeout: 5000 }).trim();
+        }
+      } else if (platform === 'linux') {
+        // Linux: try various environment variables
+        osLocale = execSync('echo "${LANG:-${LANGUAGE:-en_US.UTF-8}}"', { encoding: 'utf8', timeout: 5000 }).trim();
+      }
+
+      // If we got a valid OS locale, use it; otherwise fallback to app.getLocale()
+      if (osLocale && osLocale.length > 0 && osLocale.length < 20) {
+        console.log('[System] OS locale detected:', osLocale);
+        return osLocale;
+      }
+    } catch (error) {
+      console.warn('[System] Failed to get OS locale, using app locale:', error);
+    }
+
+    // Fallback to app locale
+    return app.getLocale();
+  });
+
   // Quit app
   ipcMain.handle('app:quit', () => {
     app.quit();
@@ -3081,6 +3117,17 @@ ${truncatedText}`;
 
 // ── Briefing (Daily AI Briefing) handlers ─────────────────────────────────
 
+/**
+ * Detect briefing language from a locale string (e.g., 'zh-CN', 'en-US', 'ja-JP')
+ * Uses OS-level locale, not Chromium/app locale
+ */
+function detectLanguage(locale: string): 'zh' | 'ja' | 'en' {
+  const lower = locale.toLowerCase();
+  if (lower.startsWith('zh')) return 'zh';
+  if (lower.startsWith('ja')) return 'ja';
+  return 'en';
+}
+
 interface BriefingSettings {
   briefingTime: string; // HH:MM format
   focusTopics: string[]; // Array of topics
@@ -3180,15 +3227,26 @@ function readBriefingContent(): BriefingData {
       const lastGeneratedMatch = frontmatter.match(/lastGenerated:\s*(.+)/);
       const topicsMatch = frontmatter.match(/topics:\s*\[(.*)\]/);
 
+      // Strip outer markdown code block wrapper if present
+      // The AI model often wraps the briefing in ```markdown ... ``` fences
+      let cleanedContent = content;
+      const codeBlockMatch = content.match(/^```(?:markdown)?\s*\n([\s\S]*?)\n```\s*$/);
+      if (codeBlockMatch) {
+        cleanedContent = codeBlockMatch[1].trim();
+      }
+
       const result = {
         lastGenerated: lastGeneratedMatch ? lastGeneratedMatch[1].trim() : null,
-        content,
+        content: cleanedContent,
         topics: topicsMatch ? topicsMatch[1].split(',').map(t => t.trim().replace(/"/g, '')) : [],
       };
       logger.info('[Briefing] Read content, topics:', result.topics, 'content length:', result.content.length);
       return result;
     }
-    const result = { ...defaultData, content: raw };
+    // Strip outer code block wrapper if present (no frontmatter case)
+    const codeBlockMatch = raw.match(/^```(?:markdown)?\s*\n([\s\S]*?)\n```\s*$/);
+    const content = codeBlockMatch ? codeBlockMatch[1].trim() : raw;
+    const result = { ...defaultData, content };
     logger.info('[Briefing] Read content (no frontmatter), length:', raw.length);
     return result;
   } catch (err) {
@@ -3284,12 +3342,22 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
 
       if (b.type === 'text' && b.text) {
         textParts.push(b.text);
-      } else if (b.type === 'toolCall') {
-        // toolCall blocks: include URL as reference if available
-        if (b.arguments?.url) {
-          textParts.push(`[${b.name || 'Tool'}: ${b.arguments.url}]`);
-        } else if (b.arguments?.content && typeof b.arguments.content === 'string') {
-          textParts.push(b.arguments.content);
+      } else if (b.type === 'toolCall' || b.type === 'toolUse') {
+        // toolCall/toolUse blocks: include URL as reference if available
+        if (b.arguments && typeof b.arguments === 'object' && 'url' in b.arguments) {
+          textParts.push(`[${b.name || 'Tool'}: ${(b.arguments as Record<string, unknown>).url}]`);
+        } else if (b.arguments && typeof b.arguments === 'object' && 'content' in b.arguments && typeof (b.arguments as Record<string, unknown>).content === 'string') {
+          textParts.push((b.arguments as Record<string, unknown>).content as string);
+        }
+      } else if (b.type === 'tool_result' || b.type === 'toolResult') {
+        // tool_result blocks: extract actual tool execution results (e.g., web_fetch content)
+        const resultContent = b.content;
+        if (typeof resultContent === 'string') {
+          textParts.push(resultContent);
+        } else if (typeof resultContent === 'object' && resultContent !== null && 'content' in resultContent && typeof (resultContent as Record<string, unknown>).content === 'string') {
+          textParts.push((resultContent as Record<string, unknown>).content as string);
+        } else if (typeof resultContent === 'object' && resultContent !== null && 'text' in resultContent && typeof (resultContent as Record<string, unknown>).text === 'string') {
+          textParts.push((resultContent as Record<string, unknown>).text as string);
         }
       }
     }
@@ -3321,7 +3389,10 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
       logger.info('[Briefing] Starting briefing generation for topics:', topicsToSearch, 'mode:', args.searchMode);
 
       // Build language-specific prompts
-      const lang = args.language || 'en';
+      // args.language may be a full locale string (e.g. 'zh-CN') or shorthand (e.g. 'zh')
+      const lang = args.language
+        ? detectLanguage(args.language)
+        : 'en';
       const prompts = {
         zh: {
           instruction: '请用简体中文生成简报。',
@@ -3329,6 +3400,11 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
           sourceLabel: '来源',
           webSearch: `请基于以下搜索结果，总结以下话题的最新新闻：${topicsToSearch.join(', ')}
 {SEARCH_CONTEXT}
+
+重要提示：
+1. 请直接使用上述搜索结果生成简报，禁止使用任何工具或搜索
+2. 绝对不要尝试调用任何工具（如 web_fetch、浏览器等）
+3. 只使用提供的搜索结果来生成内容
 
 请以 Obsidian 友好的 Markdown 格式生成每日简报，包含：
 1. 每个话题的标题
@@ -3358,6 +3434,11 @@ function registerBriefingHandlers(gatewayManager: GatewayManager): void {
           webSearch: `以下の検索結果を基に、最新ニュースをまとめてください：${topicsToSearch.join(', ')}
 {SEARCH_CONTEXT}
 
+重要なヒント：
+1. 上記の検索結果を使用して直接レポートを生成し、ツールや検索を使用しないでください
+2. 決してツールを呼び出さないでください（web_fetch、ブラウザなど）
+3. 提供された検索結果のみを使用して内容を生成してください
+
 Obsidian友好的なMarkdown形式で日次レポートを生成してください：
 1. 各话题のタイトル
 2. 簡単な要約（2-3文）
@@ -3385,6 +3466,11 @@ Obsidian友好的なMarkdown形式で日次レポートを生成してくださ�
           sourceLabel: 'Source',
           webSearch: `Based on the following search results, summarize the latest news on these topics: ${topicsToSearch.join(', ')}
 {SEARCH_CONTEXT}
+
+Important notes:
+1. Generate the briefing directly using the search results above - do NOT use any tools or search
+2. Never attempt to call any tools (such as web_fetch, browser, etc.)
+3. Only use the provided search results to generate content
 
 Generate a structured daily briefing in Obsidian-friendly Markdown format:
 1. Headline for each topic
@@ -3943,7 +4029,7 @@ Generate a well-structured daily briefing.`,
           const generateResult = await generateBriefingInternal(gm, {
             topics: settings.focusTopics,
             obsidianVaultPath: settings.obsidianVaultPath,
-            language: settings.language || 'en',
+            language: detectLanguage(app.getLocale()),
             searchMode: settings.searchMode || 'web',
           });
 
@@ -3974,7 +4060,9 @@ Generate a well-structured daily briefing.`,
       logger.info('[Briefing Scheduler] Generating for topics:', topicsToSearch);
 
       // Build language-specific prompts (same as main handler)
-      const lang = args.language || 'en';
+      const lang = args.language
+        ? detectLanguage(args.language)
+        : 'en';
       const schedulerPrompts = {
         zh: {
           instruction: '请用简体中文生成简报。',

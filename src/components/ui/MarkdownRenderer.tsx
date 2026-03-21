@@ -3,6 +3,11 @@ import remarkGfm from 'remark-gfm';
 
 interface MarkdownRendererProps {
   content: string;
+  unwrapMarkdownCodeBlocks?: boolean;
+}
+
+function unwrapMarkdownFences(content: string) {
+  return content.replace(/```(?:markdown|md)[^\S\r\n]*\r?\n([\s\S]*?)```/gi, '$1');
 }
 
 /**
@@ -47,7 +52,7 @@ function LinkComponent(props: React.AnchorHTMLAttributes<HTMLAnchorElement>) {
  *
  * Links are opened in external browser instead of in-app
  */
-export function MarkdownRenderer({ content }: MarkdownRendererProps) {
+export function MarkdownRenderer({ content, unwrapMarkdownCodeBlocks = false }: MarkdownRendererProps) {
   let parsedContent = content;
 
   try {
@@ -70,6 +75,10 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
   } catch {
     // Not JSON, use original content as-is
     parsedContent = content;
+  }
+
+  if (unwrapMarkdownCodeBlocks) {
+    parsedContent = unwrapMarkdownFences(parsedContent);
   }
 
   return (

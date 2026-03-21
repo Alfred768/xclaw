@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useSettingsStore } from '@/stores/settings';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES } from '@/i18n';
-import clawxIcon from '@/assets/logo.svg';
+import clawxIcon from '@/assets/logo.png';
 
 export function WelcomeStep() {
   const { t } = useTranslation(['setup', 'settings']);

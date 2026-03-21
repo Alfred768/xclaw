@@ -40,6 +40,7 @@ const defaultState = {
 };
 
 let inFlightProfileFetch: Promise<void> | null = null;
+let inFlightQuotaFetch: Promise<void> | null = null;
 
 export const useAccountStore = create<AccountState>()(
   persist(
@@ -280,30 +281,40 @@ export const useAccountStore = create<AccountState>()(
       },
 
       fetchQuota: async () => {
-        if (!supabase) {
-          console.warn('Supabase not configured');
-          return;
+        if (inFlightQuotaFetch) {
+          return inFlightQuotaFetch;
         }
 
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
+        inFlightQuotaFetch = (async () => {
+          try {
+            if (!supabase) {
+              console.warn('Supabase not configured');
+              return;
+            }
 
-          const { data, error } = await supabase
-            .from('usage_quotas')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
+            const authUser = useAuthStore.getState().user;
+            if (!authUser?.id) return;
 
-          if (error) {
+            const { data, error } = await supabase
+              .from('usage_quotas')
+              .select('*')
+              .eq('user_id', authUser.id)
+              .single();
+
+            if (error) {
+              console.error('Error fetching quota:', error);
+              return;
+            }
+
+            set({ quota: data as UsageQuota });
+          } catch (error) {
             console.error('Error fetching quota:', error);
-            return;
+          } finally {
+            inFlightQuotaFetch = null;
           }
+        })();
 
-          set({ quota: data as UsageQuota });
-        } catch (error) {
-          console.error('Error fetching quota:', error);
-        }
+        return inFlightQuotaFetch;
       },
 
       fetchApiKeys: async () => {

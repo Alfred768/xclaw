@@ -41,6 +41,8 @@ const electronAPI = {
         'app:platform',
         'app:quit',
         'app:relaunch',
+        // System
+        'system:getLocale',
         // Window controls
         'window:minimize',
         'window:maximize',

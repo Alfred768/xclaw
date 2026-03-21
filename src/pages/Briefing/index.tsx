@@ -162,10 +162,13 @@ export function Briefing() {
 
       console.log('[Briefing] Generate called, topics:', settings.focusTopics);
 
-      // Detect current system language at generation time (not from persisted store)
-      const systemLang = navigator.language.toLowerCase();
-      const detectedLang = systemLang.startsWith('zh') ? 'zh' : systemLang.startsWith('ja') ? 'ja' : 'en';
-      console.log('[Briefing] System language:', navigator.language, '-> detected:', detectedLang);
+      // Detect current system language at generation time via Electron main process
+      // navigator.language in Electron webview reflects app/Chromium locale, not OS locale
+      // Use IPC to get the real OS locale via app.getLocale()
+      const systemLocale = await window.electron.ipcRenderer.invoke('system:getLocale') as string;
+      const lowerLocale = systemLocale.toLowerCase();
+      const detectedLang = lowerLocale.startsWith('zh') ? 'zh' : lowerLocale.startsWith('ja') ? 'ja' : 'en';
+      console.log('[Briefing] System locale:', systemLocale, '-> detected:', detectedLang);
 
       const result = await window.electron.ipcRenderer.invoke('briefing:generate', {
         topics: settings.focusTopics,
@@ -189,10 +192,18 @@ export function Briefing() {
         if (result.content) {
           console.log('[Briefing] Setting state with new content');
 
+          // Strip outer markdown code block wrapper if present (AI often wraps in ```markdown ... ```)
+          let rawContent = result.content;
+          const codeBlockMatch = result.content.match(/^```(?:markdown)?\s*\n?([\s\S]*?)\n?```\s*$/);
+          if (codeBlockMatch) {
+            rawContent = codeBlockMatch[1].trim();
+            console.log('[Briefing] Stripped code block wrapper from content');
+          }
+
           // Parse content if it's a JSON string (from Gateway response)
-          let parsedContent = result.content;
+          let parsedContent = rawContent;
           try {
-            const parsed = JSON.parse(result.content);
+            const parsed = JSON.parse(rawContent);
             if (Array.isArray(parsed)) {
               // Handle array of content blocks (new Gateway format)
               // Supports: text blocks and toolCall blocks
@@ -200,14 +211,33 @@ export function Briefing() {
               for (const block of parsed) {
                 if (block.type === 'text' && block.text) {
                   textParts.push(block.text);
-                } else if (block.type === 'toolCall') {
+                } else if (block.type === 'toolCall' || block.type === 'toolUse') {
                   // toolCall blocks: extract URL or other useful info
-                  if (block.arguments?.url) {
-                    textParts.push(`[${block.name || 'Tool'}: ${block.arguments.url}]`);
-                  } else if (block.arguments?.content) {
-                    textParts.push(block.arguments.content);
+                  if (block.arguments && typeof block.arguments === 'object' && 'url' in block.arguments) {
+                    textParts.push(`[${block.name || 'Tool'}: ${(block.arguments as Record<string, unknown>).url}]`);
+                  } else if (block.arguments && typeof block.arguments === 'object' && 'content' in block.arguments) {
+                    const content = (block.arguments as Record<string, unknown>).content;
+                    if (typeof content === 'string') {
+                      textParts.push(content);
+                    }
                   }
                   // Skip raw toolCall JSON - it's not human-readable content
+                } else if (block.type === 'tool_result' || block.type === 'toolResult') {
+                  // tool_result blocks: extract actual tool execution results (e.g., web_fetch content)
+                  const resultContent = block.content;
+                  if (typeof resultContent === 'string') {
+                    textParts.push(resultContent);
+                  } else if (typeof resultContent === 'object' && resultContent !== null && 'content' in resultContent) {
+                    const content = (resultContent as Record<string, unknown>).content;
+                    if (typeof content === 'string') {
+                      textParts.push(content);
+                    }
+                  } else if (typeof resultContent === 'object' && resultContent !== null && 'text' in resultContent) {
+                    const text = (resultContent as Record<string, unknown>).text;
+                    if (typeof text === 'string') {
+                      textParts.push(text);
+                    }
+                  }
                 }
               }
               parsedContent = textParts.join('\n');
@@ -385,8 +415,8 @@ export function Briefing() {
                 <Badge variant="outline">{briefingData.topics.join(', ')}</Badge>
               </div>
             </div>
-            <div className="prose prose-invert max-w-none">
-              <MarkdownRenderer content={briefingData.content} />
+            <div className="prose dark:prose-invert max-w-none">
+              <MarkdownRenderer content={briefingData.content} unwrapMarkdownCodeBlocks />
             </div>
 
             {/* Obsidian Tip */}

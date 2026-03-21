@@ -5,6 +5,7 @@
 import { vi } from 'vitest';
 import '@testing-library/jest-dom';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import i18n from '@/i18n';
 
 // Mock zustand persist
 const mockStorage = {
@@ -58,3 +59,6 @@ Object.defineProperty(window, 'matchMedia', {
 afterEach(() => {
   vi.clearAllMocks();
 });
+
+// Ensure tests use a stable locale for i18n-backed UI strings.
+void i18n.changeLanguage('zh');

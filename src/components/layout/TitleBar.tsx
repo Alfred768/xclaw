@@ -6,7 +6,7 @@
  */
 import { useState, useEffect } from 'react';
 import { Minus, Square, X, Copy, List } from '@phosphor-icons/react';
-import logoSvg from '@/assets/logo.svg';
+import logoSvg from '@/assets/logo.png';
 
 const isMac = window.electron?.platform === 'darwin';
 
