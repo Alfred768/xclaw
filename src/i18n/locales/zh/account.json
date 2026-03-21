@@ -1,0 +1,85 @@
+{
+  "title": "账户",
+  "subtitle": "管理您的账户设置和偏好",
+  "tabs": {
+    "profile": "个人资料",
+    "security": "安全设置",
+    "usage": "使用情况",
+    "developer": "开发者"
+  },
+  "profile": {
+    "title": "个人资料",
+    "description": "您的基本账户信息",
+    "avatar": "头像",
+    "changeAvatar": "更换头像",
+    "displayName": "显示名称",
+    "displayNamePlaceholder": "输入您的显示名称",
+    "userId": "账户 ID",
+    "userIdPending": "刷新后可见",
+    "memberSince": "注册时间",
+    "saving": "保存中...",
+    "saved": "保存成功"
+  },
+  "security": {
+    "title": "账户安全",
+    "description": "管理您的账户绑定和安全设置",
+    "bindings": "账户绑定",
+    "alipay": "支付宝",
+    "alipayBound": "已绑定",
+    "alipayNotBound": "未绑定",
+    "wechat": "微信",
+    "wechatBound": "已绑定",
+    "wechatNotBound": "未绑定",
+    "bind": "绑定",
+    "logout": "退出登录",
+    "logoutConfirm": "确定要退出登录吗？",
+    "logoutSuccess": "已成功退出登录",
+    "bindSuccess": "账户绑定成功",
+    "bindExpired": "绑定会话已过期",
+    "bindFailed": "账户绑定失败"
+  },
+  "unauthenticated": {
+    "title": "请先登录后再管理账户",
+    "description": "账户绑定、个人资料编辑和 API 密钥管理都需要先登录。",
+    "action": "前往登录"
+  },
+  "usage": {
+    "title": "使用情况",
+    "description": "您的当前使用情况和订阅详情",
+    "currentPlan": "当前套餐",
+    "tokensUsed": "已用 Token",
+    "tokensQuota": "Token 配额",
+    "upgrade": "升级套餐",
+    "resetDate": "重置于",
+    "plans": {
+      "free": "免费",
+      "pro": "专业版",
+      "enterprise": "企业版"
+    }
+  },
+  "developer": {
+    "title": "开发者设置",
+    "description": "管理 API 密钥以进行程序化访问",
+    "apiKeys": "API 密钥",
+    "createKey": "创建新密钥",
+    "keyName": "密钥名称",
+    "keyNamePlaceholder": "例如：生产环境应用",
+    "created": "创建时间",
+    "lastUsed": "最后使用",
+    "never": "从未",
+    "revoke": "撤销",
+    "revokeConfirm": "确定要撤销此 API 密钥吗？",
+    "keyCreated": "API 密钥已创建",
+    "keyCreatedDesc": "请立即复制您的 API 密钥。您将无法再次查看它！",
+    "copyKey": "复制密钥",
+    "keyCopied": "API 密钥已复制到剪贴板",
+    "noKeys": "暂无 API 密钥",
+    "noKeysDesc": "创建 API 密钥以程序化访问 XClaw"
+  },
+  "errors": {
+    "fetchFailed": "加载账户数据失败",
+    "updateFailed": "更新个人资料失败",
+    "keyCreateFailed": "创建 API 密钥失败",
+    "keyRevokeFailed": "撤销 API 密钥失败"
+  }
+}

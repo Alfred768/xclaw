@@ -1,0 +1,166 @@
+{
+    "page": {
+        "title": "サブスクと API",
+        "subtitle": "サブスクリプションプランと API トークンを管理します"
+    },
+    "plans": {
+        "title": "サブスクリプションプラン",
+        "description": "あなたに合ったプランを選択",
+        "newUserExclusive": "新規ユーザー限定",
+        "recommended": "おすすめ",
+        "currentPlan": "現在のプラン",
+        "subscribeNow": "今すぐ購読",
+        "renew": "更新"
+    },
+    "payment": {
+        "title": "{{plan}} を購読",
+        "priceLabel": "価格:",
+        "idleDescription": "下のボタンで Alipay を開きます。支払い完了後、アカウント状態は自動で更新されます。",
+        "payNow": "支払いへ進む",
+        "pendingTitle": "支払い完了を待機中...",
+        "pendingDescription": "開いた支払いページで決済を完了してください",
+        "success": "支払い成功！",
+        "done": "完了",
+        "failedDefault": "支払いに失敗しました。再試行してください",
+        "cancel": "キャンセル",
+        "retry": "再試行"
+    },
+    "apiToken": {
+        "title": "API トークン",
+        "description": "Yunwu AI API へのアクセストークン",
+        "warningTitle": "API トークンを安全に保管してください",
+        "warningBody": "トークンを他人と共有したり、公開リポジトリにコミットしないでください。漏えい時はすぐ再発行してください。",
+        "apiKeyLabel": "API キー",
+        "hideKey": "キーを隠す",
+        "showKey": "キーを表示",
+        "copyKey": "API キーをコピー",
+        "toggleHint": "目のアイコンをクリックしてキーを{{action}}",
+        "hide": "非表示",
+        "show": "表示",
+        "used": "使用済み",
+        "remaining": "残り {{count}} tokens",
+        "remainingLabel": "残り",
+        "expires": "期限:",
+        "subscriptionType": "サブスク種別",
+        "endsAt": "有効期限",
+        "quotaExceededTitle": "使用量超過",
+        "quotaExceededBody": "APIトークンの使用量が上限に達しました。継続してご利用いただくには、サブスクリプションを更新してください。",
+        "renewNow": "今すぐ更新",
+        "usageInfo": "使用量情報",
+        "usageUnavailable": "额度已耗尽、詳細を取得できません"
+    },
+    "current": {
+        "title": "現在のプラン",
+        "trialActive": "トライアル中",
+        "upgrade": "プランをアップグレード",
+        "renew": "更新",
+        "expiryTitle": "有効期限",
+        "daysLeft": "残り {{days}} 日",
+        "expiresToday": "本日失効",
+        "expired": "失効済み",
+        "trialPeriod": "トライアル期間",
+        "trialUntil": "{{date}} までトライアル"
+    },
+    "apiConfig": {
+        "title": "AI モデルプロバイダー",
+        "editTitle": "AI モデルプロバイダーを編集",
+        "description": "Yunwu AI を AI モデルプロバイダーとして設定して開始できます",
+        "editDescription": "Yunwu AI 設定を更新",
+        "tipWithAutoFill": "購読後にここで AI モデルプロバイダーを設定してください。API キーは自動入力済みです。保存して開始できます。",
+        "tipWithoutAutoFill": "購読後にここで AI モデルプロバイダーを設定してください。保存して開始できます。",
+        "baseUrlHint": "Yunwu API エンドポイント（自動入力済み）",
+        "apiTypeHint": "API 互換フォーマット（自動入力済み）",
+        "modelIdLabel": "Model ID（任意）",
+        "modelIdPlaceholder": "例: gpt-4o, claude-3-5-sonnet-20241022",
+        "modelIdHint": "未入力の場合はデフォルトモデルを使用。下のモデル一覧からコピーも可能です",
+        "apiKeyLabel": "API Key",
+        "apiKeyPlaceholder": "API Key を入力",
+        "apiKeyHintAutoFill": "Yunwu API トークンを自動入力しました",
+        "apiKeyHintManual": "Yunwu API トークンを入力してください",
+        "cancel": "キャンセル",
+        "saving": "保存中...",
+        "updateConfig": "設定を更新",
+        "saveConfig": "設定を保存",
+        "configuredTitle": "AI モデルプロバイダーは設定済みです",
+        "currentModel": "現在のモデル: {{model}}",
+        "defaultModel": "デフォルトモデル",
+        "editConfig": "設定を編集"
+    },
+    "models": {
+        "title": "対応モデル",
+        "description": "モデル名をクリックしてコピー",
+        "recommended": "おすすめモデル:",
+        "collapse": "折りたたむ",
+        "showAll": "利用可能な全 {{count}} モデルを表示",
+        "noToken": "API トークンを作成すると全モデル一覧を表示できます",
+        "quotaExceeded": "モデル一覧を読み込めません",
+        "quotaExceededHint": "使用量が上限に達しました。全モデル一覧を表示するには更新してください"
+    },
+    "trial": {
+        "title": "無料トライアル",
+        "description": "新規ユーザー限定: {{quotaK}}K tokens、{{days}} 日間有効",
+        "tip": "無料トライアルを受け取ると「期間限定特価」モデルグループにアクセスできます。終了後は有料購読可能です。",
+        "loginRequired": "トライアル受け取り前にログインしてください",
+        "claiming": "受け取り中...",
+        "claimButton": "無料トライアルを受け取る",
+        "hasToken": "すでに API トークンを所有しています",
+        "resetForTesting": "トライアル状態をリセット（テスト用）"
+    },
+    "plan": {
+        "free": {
+            "name": "無料トライアル",
+            "priceText": "無料",
+            "period": "3日間トライアル",
+            "tokensText": "1M tokens",
+            "features": {
+                "f1": "3日間無料トライアル",
+                "f2": "1M tokens",
+                "f3": "基本モデルへのアクセス"
+            }
+        },
+        "monthly": {
+            "name": "月額プラン",
+            "priceText": "¥29.9",
+            "period": "/月",
+            "tokensText": "10M tokens/月",
+            "features": {
+                "f1": "毎月 10M tokens",
+                "f2": "全モデルへアクセス",
+                "f3": "優先サポート"
+            }
+        },
+        "yearly": {
+            "name": "年額プラン",
+            "priceText": "¥299",
+            "period": "/年",
+            "tokensText": "130M tokens/年",
+            "features": {
+                "f1": "毎年 130M tokens",
+                "f2": "全モデルへアクセス",
+                "f3": "優先サポート",
+                "f4": "専用サポート"
+            },
+            "savings": "¥59.8 お得"
+        }
+    },
+    "tier": {
+        "trial": "無料トライアル",
+        "free": "無料版",
+        "monthly": "月額プラン",
+        "yearly": "年額プラン",
+        "pro": "プロ",
+        "enterprise": "エンタープライズ"
+    },
+    "message": {
+        "copied": "クリップボードにコピーしました",
+        "loginRequiredToSubscribe": "購読前にログインしてください",
+        "loginRequired": "先にログインしてください",
+        "claimSuccess": "トライアル受け取り成功！{{quotaK}}K tokens を {{days}} 日間利用できます",
+        "claimFailed": "受け取りに失敗しました",
+        "paymentCreateFailed": "支払い作成に失敗しました",
+        "apiKeyRequired": "API Key を入力してください",
+        "providerUpdated": "AI モデルプロバイダー設定を更新しました！",
+        "providerSaved": "AI モデルプロバイダー設定が完了しました！",
+        "saveFailed": "保存に失敗しました: {{error}}"
+    }
+}

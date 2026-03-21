@@ -1,0 +1,166 @@
+{
+    "page": {
+        "title": "订阅与 API",
+        "subtitle": "管理您的订阅计划和 API 令牌"
+    },
+    "plans": {
+        "title": "订阅计划",
+        "description": "选择适合您的计划",
+        "newUserExclusive": "新用户专享",
+        "recommended": "推荐",
+        "currentPlan": "当前计划",
+        "subscribeNow": "立即订阅",
+        "renew": "续费"
+    },
+    "payment": {
+        "title": "订阅 {{plan}}",
+        "priceLabel": "价格:",
+        "idleDescription": "点击下方按钮将打开支付宝支付页面，完成支付后将自动刷新您的账户状态。",
+        "payNow": "去支付",
+        "pendingTitle": "等待支付完成...",
+        "pendingDescription": "请在打开的支付页面完成付款",
+        "success": "支付成功！",
+        "done": "完成",
+        "failedDefault": "支付失败，请重试",
+        "cancel": "取消",
+        "retry": "重试"
+    },
+    "apiToken": {
+        "title": "API 令牌",
+        "description": "您的云雾 AI API 访问令牌",
+        "warningTitle": "请妥善保管您的 API 令牌",
+        "warningBody": "请勿将令牌分享给他人或提交到公开代码仓库。如令牌泄露，请立即重新生成。",
+        "apiKeyLabel": "API 密钥",
+        "hideKey": "隐藏密钥",
+        "showKey": "显示完整密钥",
+        "copyKey": "复制 API 密钥",
+        "toggleHint": "点击眼睛图标可{{action}}完整密钥",
+        "hide": "隐藏",
+        "show": "显示",
+        "used": "已使用",
+        "remaining": "剩余 {{count}} tokens",
+        "remainingLabel": "剩余",
+        "expires": "到期:",
+        "subscriptionType": "订阅类型",
+        "endsAt": "到期时间",
+        "quotaExceededTitle": "额度已用尽",
+        "quotaExceededBody": "您的 API 调用额度已经用完，请续费以继续使用。",
+        "renewNow": "立即续费",
+        "usageInfo": "用量信息",
+        "usageUnavailable": "额度已耗尽，无法获取详情"
+    },
+    "current": {
+        "title": "当前套餐",
+        "trialActive": "试用中",
+        "upgrade": "升级套餐",
+        "renew": "续费",
+        "expiryTitle": "到期时间",
+        "daysLeft": "还剩 {{days}} 天",
+        "expiresToday": "今天到期",
+        "expired": "已过期",
+        "trialPeriod": "试用期",
+        "trialUntil": "试用期至 {{date}}"
+    },
+    "apiConfig": {
+        "title": "AI 模型提供商",
+        "editTitle": "修改 AI 模型提供商",
+        "description": "配置云雾 AI 作为您的 AI 模型提供商，即可开始使用",
+        "editDescription": "修改云雾 AI 配置",
+        "tipWithAutoFill": "订阅成功后，请在此配置您的 AI 模型提供商。API Key 已自动填充，点击保存即可开始使用。",
+        "tipWithoutAutoFill": "订阅成功后，请在此配置您的 AI 模型提供商。点击保存即可开始使用。",
+        "baseUrlHint": "云雾 API 地址（已预填）",
+        "apiTypeHint": "API 兼容格式（已预填）",
+        "modelIdLabel": "Model ID（可选）",
+        "modelIdPlaceholder": "例如: gpt-4o, claude-3-5-sonnet-20241022",
+        "modelIdHint": "留空则使用默认模型，或从下方「支持的模型」中选择点击复制",
+        "apiKeyLabel": "API Key",
+        "apiKeyPlaceholder": "输入您的 API Key",
+        "apiKeyHintAutoFill": "已自动填充您的云雾 API 令牌",
+        "apiKeyHintManual": "请输入您的云雾 API 令牌",
+        "cancel": "取消",
+        "saving": "保存中...",
+        "updateConfig": "更新配置",
+        "saveConfig": "保存配置",
+        "configuredTitle": "AI 模型提供商已配置",
+        "currentModel": "当前模型: {{model}}",
+        "defaultModel": "默认模型",
+        "editConfig": "修改配置"
+    },
+    "models": {
+        "title": "支持的模型",
+        "description": "点击模型名称复制到剪贴板",
+        "recommended": "推荐模型:",
+        "collapse": "收起",
+        "showAll": "查看全部 {{count}} 个可用模型",
+        "noToken": "创建 API 令牌后可查看完整模型列表",
+        "quotaExceeded": "无法加载模型列表",
+        "quotaExceededHint": "您的额度已用尽，请续费后查看完整模型列表"
+    },
+    "trial": {
+        "title": "免费试用",
+        "description": "新用户专享：{{quotaK}}K tokens，有效期 {{days}} 天",
+        "tip": "领取免费试用后，您将获得访问\"限时特价\"模型分组的权限。试用结束后可继续订阅付费会员。",
+        "loginRequired": "请先登录后再领取试用",
+        "claiming": "领取中...",
+        "claimButton": "领取免费试用",
+        "hasToken": "您已拥有 API 令牌",
+        "resetForTesting": "重置试用状态（测试用）"
+    },
+    "plan": {
+        "free": {
+            "name": "免费试用",
+            "priceText": "免费",
+            "period": "3天试用",
+            "tokensText": "100万 tokens",
+            "features": {
+                "f1": "3天免费试用",
+                "f2": "100万 tokens",
+                "f3": "基础模型访问"
+            }
+        },
+        "monthly": {
+            "name": "月度会员",
+            "priceText": "¥29.9",
+            "period": "/月",
+            "tokensText": "1000万 tokens/月",
+            "features": {
+                "f1": "1000万 tokens 每月",
+                "f2": "所有模型访问",
+                "f3": "优先支持"
+            }
+        },
+        "yearly": {
+            "name": "年度会员",
+            "priceText": "¥299",
+            "period": "/年",
+            "tokensText": "1亿3000万 tokens/年",
+            "features": {
+                "f1": "1亿3000万 tokens 每年",
+                "f2": "所有模型访问",
+                "f3": "优先支持",
+                "f4": "专属客服"
+            },
+            "savings": "省 ¥59.8"
+        }
+    },
+    "tier": {
+        "trial": "免费试用",
+        "free": "免费版",
+        "monthly": "月度会员",
+        "yearly": "年度会员",
+        "pro": "专业版",
+        "enterprise": "企业版"
+    },
+    "message": {
+        "copied": "已复制到剪贴板",
+        "loginRequiredToSubscribe": "请先登录后再订阅",
+        "loginRequired": "请先登录",
+        "claimSuccess": "试用领取成功！获得 {{quotaK}}K tokens，有效期 {{days}} 天",
+        "claimFailed": "领取失败",
+        "paymentCreateFailed": "支付创建失败",
+        "apiKeyRequired": "请输入 API Key",
+        "providerUpdated": "AI 模型提供商配置已更新！",
+        "providerSaved": "AI 模型提供商配置成功！",
+        "saveFailed": "保存失败: {{error}}"
+    }
+}

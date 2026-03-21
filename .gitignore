@@ -1,0 +1,99 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+dist-electron/
+release/
+*.local
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment
+.env
+.env.local
+.env.*.local
+supabase/.env.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Cache
+.cache/
+.turbo/
+*.tsbuildinfo
+
+# Electron
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.rpm
+
+resources/bin
+
+# Secrets
+*.p12
+*.pem
+*.key
+
+build/
+
+.cursor/
+.pnpm-store/
+
+# Local user data (do not commit)
+.openclaw/
+.clawx-data/
+Keys/
+.worktrees/
+
+# Brainstorming artifacts
+.superpowers/
+
+# Sensitive backend and private docs (for public client export)
+supabase/
+alipay-auth/
+auth-site/
+docs/alipay_login.md
+docs/yunwu-api.md
+docs/DATABASE_MIGRATION_GUIDE.md
+docs/avatar_feature.md
+
+# Internal test scripts with API endpoints
+scripts/test-*.sh
+scripts/migrate-*.sh
+scripts/migrate-*.mjs
+
+# Internal planning documents
+plan.txt
+docs/superpowers/
+
+# Design context (internal)
+.impeccable.md
+.agents/
+
+# Local publish scripts + secrets
+publish/

@@ -1,0 +1,166 @@
+{
+    "page": {
+        "title": "Subscription & API",
+        "subtitle": "Manage your subscription plans and API token"
+    },
+    "plans": {
+        "title": "Subscription Plans",
+        "description": "Choose the plan that fits you",
+        "newUserExclusive": "New User Exclusive",
+        "recommended": "Recommended",
+        "currentPlan": "Current Plan",
+        "subscribeNow": "Subscribe Now",
+        "renew": "Renew"
+    },
+    "payment": {
+        "title": "Subscribe {{plan}}",
+        "priceLabel": "Price:",
+        "idleDescription": "Click the button below to open Alipay. Your account status will refresh automatically after payment.",
+        "payNow": "Pay Now",
+        "pendingTitle": "Waiting for payment...",
+        "pendingDescription": "Please complete payment in the opened payment page",
+        "success": "Payment successful!",
+        "done": "Done",
+        "failedDefault": "Payment failed, please try again",
+        "cancel": "Cancel",
+        "retry": "Retry"
+    },
+    "apiToken": {
+        "title": "API Token",
+        "description": "Your Yunwu AI API access token",
+        "warningTitle": "Keep your API token safe",
+        "warningBody": "Do not share this token or commit it to public repositories. If leaked, rotate it immediately.",
+        "apiKeyLabel": "API Key",
+        "hideKey": "Hide key",
+        "showKey": "Show full key",
+        "copyKey": "Copy API key",
+        "toggleHint": "Click the eye icon to {{action}} the full key",
+        "hide": "hide",
+        "show": "show",
+        "used": "Used",
+        "remaining": "Remaining {{count}} tokens",
+        "remainingLabel": "Remaining",
+        "expires": "Expires:",
+        "subscriptionType": "Subscription Type",
+        "endsAt": "Ends At",
+        "quotaExceededTitle": "Quota Exceeded",
+        "quotaExceededBody": "Your API token quota has been exhausted. Please renew your subscription to continue.",
+        "renewNow": "Renew Now",
+        "usageInfo": "Usage Info",
+        "usageUnavailable": "Quota exhausted, details unavailable"
+    },
+    "current": {
+        "title": "Current Plan",
+        "trialActive": "Trial Active",
+        "upgrade": "Upgrade Plan",
+        "renew": "Renew",
+        "expiryTitle": "Expiration Date",
+        "daysLeft": "{{days}} day(s) left",
+        "expiresToday": "Expires today",
+        "expired": "Expired",
+        "trialPeriod": "Trial Period",
+        "trialUntil": "Trial until {{date}}"
+    },
+    "apiConfig": {
+        "title": "AI Model Provider",
+        "editTitle": "Edit AI Model Provider",
+        "description": "Configure Yunwu AI as your AI model provider to get started",
+        "editDescription": "Update your Yunwu AI settings",
+        "tipWithAutoFill": "After subscribing, configure your AI model provider here. API key is auto-filled. Click Save to start.",
+        "tipWithoutAutoFill": "After subscribing, configure your AI model provider here. Click Save to start.",
+        "baseUrlHint": "Yunwu API endpoint (pre-filled)",
+        "apiTypeHint": "API compatibility format (pre-filled)",
+        "modelIdLabel": "Model ID (optional)",
+        "modelIdPlaceholder": "e.g. gpt-4o, claude-3-5-sonnet-20241022",
+        "modelIdHint": "Leave empty to use the default model, or copy one from the model list below",
+        "apiKeyLabel": "API Key",
+        "apiKeyPlaceholder": "Enter your API key",
+        "apiKeyHintAutoFill": "Your Yunwu API token has been auto-filled",
+        "apiKeyHintManual": "Please enter your Yunwu API token",
+        "cancel": "Cancel",
+        "saving": "Saving...",
+        "updateConfig": "Update Configuration",
+        "saveConfig": "Save Configuration",
+        "configuredTitle": "AI model provider configured",
+        "currentModel": "Current model: {{model}}",
+        "defaultModel": "Default model",
+        "editConfig": "Edit Configuration"
+    },
+    "models": {
+        "title": "Supported Models",
+        "description": "Click a model name to copy",
+        "recommended": "Recommended models:",
+        "collapse": "Collapse",
+        "showAll": "Show all {{count}} available models",
+        "noToken": "Create an API token to view the full model list",
+        "quotaExceeded": "Unable to load model list",
+        "quotaExceededHint": "Your quota has been exhausted. Please renew to view the full model list"
+    },
+    "trial": {
+        "title": "Free Trial",
+        "description": "New user only: {{quotaK}}K tokens, valid for {{days}} days",
+        "tip": "After claiming the free trial, you'll get access to the \"limited-time special\" model group. You can subscribe after trial ends.",
+        "loginRequired": "Please log in before claiming trial",
+        "claiming": "Claiming...",
+        "claimButton": "Claim Free Trial",
+        "hasToken": "You already have an API token",
+        "resetForTesting": "Reset trial status (for testing)"
+    },
+    "plan": {
+        "free": {
+            "name": "Free Trial",
+            "priceText": "Free",
+            "period": "3-day trial",
+            "tokensText": "1M tokens",
+            "features": {
+                "f1": "3-day free trial",
+                "f2": "1M tokens",
+                "f3": "Basic model access"
+            }
+        },
+        "monthly": {
+            "name": "Monthly Plan",
+            "priceText": "¥29.9",
+            "period": "/month",
+            "tokensText": "10M tokens/month",
+            "features": {
+                "f1": "10M tokens per month",
+                "f2": "Access to all models",
+                "f3": "Priority support"
+            }
+        },
+        "yearly": {
+            "name": "Yearly Plan",
+            "priceText": "¥299",
+            "period": "/year",
+            "tokensText": "130M tokens/year",
+            "features": {
+                "f1": "130M tokens per year",
+                "f2": "Access to all models",
+                "f3": "Priority support",
+                "f4": "Dedicated support"
+            },
+            "savings": "Save ¥59.8"
+        }
+    },
+    "tier": {
+        "trial": "Free Trial",
+        "free": "Free",
+        "monthly": "Monthly Plan",
+        "yearly": "Yearly Plan",
+        "pro": "Pro",
+        "enterprise": "Enterprise"
+    },
+    "message": {
+        "copied": "Copied to clipboard",
+        "loginRequiredToSubscribe": "Please log in before subscribing",
+        "loginRequired": "Please log in first",
+        "claimSuccess": "Trial claimed successfully! You received {{quotaK}}K tokens valid for {{days}} days",
+        "claimFailed": "Claim failed",
+        "paymentCreateFailed": "Failed to create payment",
+        "apiKeyRequired": "Please enter API key",
+        "providerUpdated": "AI model provider updated!",
+        "providerSaved": "AI model provider configured!",
+        "saveFailed": "Save failed: {{error}}"
+    }
+}

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>XClaw | 不用先学命令行，也能把 AI agent 跑起来</title>
+    <meta
+      name="description"
+      content="XClaw 把 OpenClaw 变成真正可下载、可配置、可持续使用的桌面 AI 工作台。无需命令行，也能完成登录、环境检查、模型配置、频道连接、技能安装和自动化工作流。"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Sora:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./script.js" defer></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="XClaw Home">
+          <img src="./assets/logo.png" alt="XClaw" class="brand-mark" />
+          <div>
+            <p class="brand-name">XClaw</p>
+            <p class="brand-tag" data-copy="brand.tag">OpenClaw 的桌面工作台</p>
+          </div>
+        </a>
+
+        <div class="topbar-actions">
+          <div class="language-toggle" data-language-toggle>
+            <button type="button" data-language-option="zh" class="is-active">中文</button>
+            <button type="button" data-language-option="en">EN</button>
+          </div>
+          <a
+            class="ghost-link"
+            href="https://github.com/ValueCell-ai/XClaw"
+            target="_blank"
+            rel="noreferrer"
+            data-copy="nav.github"
+          >
+            查看 GitHub
+          </a>
+          <a
+            class="primary-link topbar-download"
+            href="https://github.com/ValueCell-ai/XClaw/releases"
+            target="_blank"
+            rel="noreferrer"
+            data-copy="nav.download"
+          >
+            下载桌面版
+          </a>
+        </div>
+      </header>
+
+      <main id="top">
+        <section class="hero section-card" data-section="hero" data-hero-mode="chat-first">
+          <div class="hero-copy">
+            <p class="eyebrow" data-copy="hero.eyebrow">产品演示</p>
+            <h1 data-copy="hero.title">不用先学命令行，也能把 AI agent 跑起来</h1>
+            <p class="hero-lead" data-copy="hero.lead">
+              XClaw 把 OpenClaw 变成真正可以下载、登录、配置并持续使用的桌面产品。
+            </p>
+            <div class="hero-actions">
+              <a
+                class="primary-link"
+                href="https://github.com/ValueCell-ai/XClaw/releases"
+                target="_blank"
+                rel="noreferrer"
+                data-copy="hero.primary"
+              >
+                下载桌面版
+              </a>
+              <a
+                class="secondary-link"
+                href="https://github.com/ValueCell-ai/XClaw"
+                target="_blank"
+                rel="noreferrer"
+                data-copy="hero.secondary"
+              >
+                查看 GitHub
+              </a>
+            </div>
+            <div class="hero-badges" data-hero-badges></div>
+            <div class="proof-grid proof-grid--compact" data-hero-proof-list></div>
+          </div>
+
+          <div class="hero-stage">
+            <div class="hero-stage-head">
+              <div>
+                <p class="hero-stage-label" data-copy="hero.stageLabel">先从对话开始</p>
+                <p class="hero-stage-note" data-copy="hero.stageNote">先让人看懂它怎么开始，再决定要不要下载。</p>
+              </div>
+              <div class="substage-switch" data-chat-state-list></div>
+            </div>
+
+            <div class="hero-canvas">
+              <div class="hero-glow hero-glow--one"></div>
+              <div class="hero-glow hero-glow--two"></div>
+              <figure class="surface-frame hero-frame" data-hero-frame>
+                <div class="surface-window-bar">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <img data-hero-image src="" alt="XClaw hero demo" />
+              </figure>
+
+            </div>
+          </div>
+        </section>
+
+        <section class="setup-demo section-card" data-section="setup-demo" data-setup-layout="giant">
+          <div class="section-head">
+            <p class="eyebrow" data-copy="setup.eyebrow">上手流程</p>
+            <h2 data-copy="setup.title">7 步完成上手</h2>
+            <p class="section-lead" data-copy="setup.lead">
+              从欢迎页到完成页，整个流程都看得见。你不需要先懂 OpenClaw 的内部结构。
+            </p>
+          </div>
+
+          <div class="setup-layout">
+            <aside class="setup-card">
+              <div class="setup-card-head">
+                <p class="setup-index" data-setup-index></p>
+                <p class="setup-label" data-setup-label></p>
+              </div>
+              <h3 data-setup-title></h3>
+              <p class="setup-summary" data-setup-summary></p>
+              <p class="setup-detail" data-setup-detail></p>
+              <div class="substep-switch setup-substeps" data-setup-substep-list hidden></div>
+              <div class="setup-nav">
+                <button type="button" class="ghost-link button-like" data-setup-nav="prev" data-copy="setup.prev">
+                  上一步
+                </button>
+                <button type="button" class="secondary-link button-like" data-setup-nav="next" data-copy="setup.next">
+                  下一步
+                </button>
+              </div>
+            </aside>
+
+            <div class="setup-stage">
+              <div class="setup-rail" data-setup-step-list></div>
+              <figure class="surface-frame setup-frame" data-setup-frame>
+                <div class="surface-window-bar">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <img data-setup-image src="" alt="Setup walkthrough screenshot" />
+              </figure>
+            </div>
+          </div>
+        </section>
+
+        <section class="pain-fix section-card" data-section="pain-fix">
+          <div class="section-head compact">
+            <p class="eyebrow" data-copy="pain.eyebrow">为什么很多人最后没用起来</p>
+            <h2 data-copy="pain.title">真正劝退人的，不是能力不够，而是开始太难</h2>
+            <p class="section-lead" data-copy="pain.lead">
+              XClaw 把命令行门槛、分散配置和难以持续的自动化，收进可见的产品流程里。
+            </p>
+          </div>
+
+          <div class="pain-layout">
+            <div class="pain-switch" data-pain-option-list></div>
+            <div class="compare-grid">
+              <article class="compare-card before-card" data-tone="muted">
+                <p class="compare-label" data-copy="pain.beforeLabel">没有 XClaw</p>
+                <h3 data-pain-before-title></h3>
+                <p data-pain-before-body></p>
+              </article>
+              <article class="compare-card after-card">
+                <p class="compare-label" data-copy="pain.afterLabel">使用 XClaw</p>
+                <h3 data-pain-after-title></h3>
+                <p data-pain-after-body></p>
+              </article>
+            </div>
+            <div class="pain-proof" data-pain-proof></div>
+          </div>
+        </section>
+
+        <section class="product-stories section-card" data-section="product-stories">
+          <div class="section-head">
+            <p class="eyebrow" data-copy="stories.eyebrow">真实工作流</p>
+            <h2 data-copy="stories.title">对话只是入口，后面还有一整套真正能工作的界面</h2>
+            <p class="section-lead" data-copy="stories.lead">
+              先从开始工作看起，再看自动化和系统管理，最后补齐账号与订阅闭环。
+            </p>
+          </div>
+
+          <div class="cluster-switch" data-story-cluster-list></div>
+
+          <div class="stories-layout">
+            <div class="story-main">
+              <div class="surface-switch story-switch" data-story-surface-list></div>
+              <figure class="surface-frame story-frame" data-story-frame>
+                <div class="surface-window-bar">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <img data-story-image src="" alt="XClaw feature screenshot" />
+                <figcaption>
+                  <p class="surface-kicker" data-story-cluster-label></p>
+                  <h3 class="surface-title" data-story-title></h3>
+                  <p class="surface-body" data-story-body></p>
+                  <div class="tag-row" data-story-tags></div>
+                </figcaption>
+              </figure>
+            </div>
+
+            <aside class="demo-stack">
+              <section class="demo-card" data-demo="subscription">
+                <div class="demo-head">
+                  <p class="demo-kicker" data-copy="demos.subscription.kicker">订阅与接口</p>
+                  <h3 data-copy="demos.subscription.title">从试用到正式使用的闭环</h3>
+                  <p data-copy="demos.subscription.lead">切换套餐，看看额度、模型范围和适合人群如何变化。</p>
+                </div>
+                <div class="plan-switch" data-plan-list></div>
+                <div class="plan-state">
+                  <p class="plan-price" data-plan-price></p>
+                  <p class="plan-tokens" data-plan-tokens></p>
+                  <p class="plan-models" data-plan-models></p>
+                  <p class="plan-audience" data-plan-audience></p>
+                </div>
+              </section>
+
+              <section class="demo-card" data-demo="account">
+                <div class="demo-head">
+                  <p class="demo-kicker" data-copy="demos.account.kicker">账号与安全</p>
+                  <h3 data-copy="demos.account.title">账号、绑定和安全设置也已经产品化</h3>
+                  <p data-copy="demos.account.lead">资料、绑定、安全设置和订阅状态，都在同一个桌面里可见。</p>
+                </div>
+                <div class="account-tabs" data-account-tabs></div>
+                <div class="account-panel">
+                  <div class="account-avatar" data-account-avatar>A</div>
+                  <div class="account-meta">
+                    <p class="account-name" data-account-name>Alfred</p>
+                    <p class="account-note" data-account-note></p>
+                  </div>
+                </div>
+                <div class="account-fields" data-account-fields></div>
+              </section>
+            </aside>
+          </div>
+        </section>
+
+        <section class="why-download section-card" data-section="why-download">
+          <div class="section-head compact">
+            <p class="eyebrow" data-copy="why.eyebrow">为什么现在下载</p>
+            <h2 data-copy="why.title">为什么现在下载</h2>
+            <p class="section-lead" data-copy="why.lead">
+              不是概念页，不是单纯聊天壳，而是已经能把安装、配置和工作串起来的桌面产品。
+            </p>
+          </div>
+
+          <div class="bullet-grid" data-why-bullets></div>
+
+          <div class="download-strip">
+            <div>
+              <p class="download-kicker" data-copy="why.stripEyebrow">下载桌面版</p>
+              <h3 data-copy="why.stripTitle">别再从配置文件开始，从工作开始。</h3>
+              <p data-copy="why.stripLead">如果你已经看懂它怎么安装、怎么登录、怎么工作，现在只差按下下载按钮。</p>
+            </div>
+            <div class="section-cta">
+              <a
+                class="primary-link"
+                href="https://github.com/ValueCell-ai/XClaw/releases"
+                target="_blank"
+                rel="noreferrer"
+                data-copy="why.primary"
+              >
+                下载桌面版
+              </a>
+              <a
+                class="secondary-link"
+                href="https://github.com/ValueCell-ai/XClaw"
+                target="_blank"
+                rel="noreferrer"
+                data-copy="why.secondary"
+              >
+                查看 GitHub
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section class="footer-cta section-card" data-section="footer-cta">
+          <div>
+            <p class="eyebrow" data-copy="footer.eyebrow">准备好了就开始</p>
+            <h2 data-copy="footer.title">下载桌面版，直接开始。</h2>
+            <p class="section-lead" data-copy="footer.lead">
+              XClaw 已经把安装、配置、自动化和持续使用做成了产品流程。下一步就是把它装到你的桌面上。
+            </p>
+          </div>
+          <div class="footer-actions">
+            <a
+              class="primary-link"
+              href="https://github.com/ValueCell-ai/XClaw/releases"
+              target="_blank"
+              rel="noreferrer"
+              data-copy="footer.primary"
+            >
+              下载桌面版
+            </a>
+            <a
+              class="secondary-link"
+              href="https://discord.gg/4g9J6fkQkX"
+              target="_blank"
+              rel="noreferrer"
+              data-copy="footer.secondary"
+            >
+              加入 Discord
+            </a>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,296 @@
+/**
+ * ClawX Design Token System
+ *
+ * This file contains all design tokens for the ClawX application.
+ * Tokens are the visual design atoms of the design system.
+ *
+ * Color format: HSL (Hue Saturation Lightness)
+ * This allows for easy manipulation and theming.
+ */
+
+:root {
+  /* ========================================
+     COLOR PALETTE
+     ======================================== */
+
+  /* Primary Colors (Blue-based)
+   * Base hue: 221.2, Base saturation: 83.2%, Base lightness: 53.3%
+   */
+  --primary-50: 214 100% 97%;
+  --primary-100: 214 95% 93%;
+  --primary-200: 213 97% 87%;
+  --primary-300: 212 96% 78%;
+  --primary-400: 213 94% 68%;
+  --primary-500: 221.2 83.2% 53.3%; /* Base */
+  --primary-600: 221 83% 46%;
+  --primary-700: 220 83% 38%;
+  --primary-800: 220 81% 32%;
+  --primary-900: 221 82% 26%;
+
+  /* Success Colors (Green)
+   * Conveys positive actions, success states
+   */
+  --success-50: 138 76% 97%;
+  --success-100: 141 84% 93%;
+  --success-200: 141 79% 85%;
+  --success-300: 142 77% 73%;
+  --success-400: 142 69% 58%;
+  --success-500: 142 71% 45%; /* Base */
+  --success-600: 142 76% 36%;
+  --success-700: 142 72% 29%;
+  --success-800: 143 64% 24%;
+  --success-900: 144 61% 20%;
+
+  /* Warning Colors (Amber)
+   * Conveys caution, warning states
+   */
+  --warning-50: 48 100% 96%;
+  --warning-100: 48 97% 88%;
+  --warning-200: 45 96% 77%;
+  --warning-300: 43 96% 66%;
+  --warning-400: 38 96% 58%;
+  --warning-500: 38 92% 50%; /* Base */
+  --warning-600: 32 95% 44%;
+  --warning-700: 26 90% 37%;
+  --warning-800: 23 82% 31%;
+  --warning-900: 22 78% 26%;
+
+  /* Error/Destructive Colors (Red)
+   * Conveys errors, destructive actions
+   */
+  --error-50: 0 86% 97%;
+  --error-100: 0 93% 94%;
+  --error-200: 0 96% 89%;
+  --error-300: 0 94% 82%;
+  --error-400: 0 91% 71%;
+  --error-500: 0 84.2% 60.2%; /* Base */
+  --error-600: 0 72% 51%;
+  --error-700: 0 74% 42%;
+  --error-800: 0 70% 35%;
+  --error-900: 0 63% 31%;
+
+  /* Neutral Colors (Gray)
+   * Used for text, borders, backgrounds
+   */
+  --neutral-50: 210 40% 98%;
+  --neutral-100: 214 32% 96%;
+  --neutral-200: 213 27% 92%;
+  --neutral-300: 212 26% 85%;
+  --neutral-400: 215 20% 65%;
+  --neutral-500: 215 16% 47%;
+  --neutral-600: 215 19% 35%;
+  --neutral-700: 215 25% 27%;
+  --neutral-800: 217 33% 17%;
+  --neutral-900: 222 47% 11%;
+
+  /* ========================================
+     SPACING TOKENS
+     ========================================
+   * Based on 4px grid system
+   * 1rem = 16px (default browser font size)
+   */
+  --spacing-0: 0;
+  --spacing-px: 1px;
+  --spacing-xs: 0.25rem;   /* 4px */
+  --spacing-sm: 0.5rem;    /* 8px */
+  --spacing-md: 1rem;      /* 16px */
+  --spacing-lg: 1.5rem;    /* 24px */
+  --spacing-xl: 2rem;      /* 32px */
+  --spacing-2xl: 3rem;     /* 48px */
+  --spacing-3xl: 4rem;     /* 64px */
+
+  /* ========================================
+     TYPOGRAPHY SYSTEM
+     ======================================== */
+
+  /* Font Families */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Font Sizes */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px */
+  --text-2xl: 1.5rem;      /* 24px */
+  --text-3xl: 1.875rem;    /* 30px */
+  --text-4xl: 2.25rem;     /* 36px */
+
+  /* Line Heights */
+  --leading-xs: 1rem;      /* 16px - for text-xs */
+  --leading-sm: 1.25rem;   /* 20px - for text-sm */
+  --leading-base: 1.5rem;  /* 24px - for text-base */
+  --leading-lg: 1.75rem;   /* 28px - for text-lg */
+  --leading-xl: 1.75rem;   /* 28px - for text-xl */
+  --leading-2xl: 2rem;     /* 32px - for text-2xl */
+  --leading-3xl: 2.25rem;  /* 36px - for text-3xl */
+  --leading-4xl: 2.5rem;   /* 40px - for text-4xl */
+
+  /* Font Weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Letter Spacing */
+  --tracking-tighter: -0.05em;
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+
+  /* ========================================
+     BORDER RADIUS
+     ======================================== */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;    /* 4px */
+  --radius-md: 0.5rem;     /* 8px - matches --radius from globals.css */
+  --radius-lg: 0.75rem;    /* 12px */
+  --radius-xl: 1rem;       /* 16px */
+  --radius-2xl: 1.5rem;    /* 24px */
+  --radius-full: 9999px;   /* Fully rounded */
+
+  /* ========================================
+     SHADOWS
+     ======================================== */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  --shadow-none: 0 0 #0000;
+
+  /* ========================================
+     ANIMATIONS
+     ======================================== */
+
+  /* Durations */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+
+  /* Easing Functions */
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* ========================================
+     Z-INDEX SCALE
+     ========================================
+   * Organized in logical layers
+   */
+  --z-below: -1;
+  --z-base: 0;
+  --z-docked: 10;
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-fixed: 1200;
+  --z-modal-backdrop: 1300;
+  --z-modal: 1400;
+  --z-popover: 1500;
+  --z-tooltip: 1600;
+  --z-top: 9999;
+
+  /* ========================================
+     BREAKPOINTS (for reference)
+     ========================================
+   * These are reference values - use with media queries
+   */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* ========================================
+     COMPONENT-SPECIFIC TOKENS
+     ======================================== */
+
+  /* Buttons */
+  --button-height-sm: 2rem;      /* 32px */
+  --button-height-md: 2.5rem;    /* 40px */
+  --button-height-lg: 3rem;      /* 48px */
+
+  /* Inputs */
+  --input-height-sm: 2rem;       /* 32px */
+  --input-height-md: 2.5rem;     /* 40px */
+  --input-height-lg: 3rem;       /* 48px */
+
+  /* Avatar */
+  --avatar-size-xs: 1.5rem;      /* 24px */
+  --avatar-size-sm: 2rem;        /* 32px */
+  --avatar-size-md: 2.5rem;      /* 40px */
+  --avatar-size-lg: 3rem;        /* 48px */
+  --avatar-size-xl: 4rem;        /* 64px */
+
+  /* Sidebar */
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 64px;
+
+  /* Header */
+  --header-height: 56px;
+}
+
+/* ========================================
+   DARK MODE OVERRIDES
+   ======================================== */
+.dark {
+  /* Adjust shadows for dark mode */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.2);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.2);
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Spacing utilities using tokens */
+.gap-xs { gap: var(--spacing-xs); }
+.gap-sm { gap: var(--spacing-sm); }
+.gap-md { gap: var(--spacing-md); }
+.gap-lg { gap: var(--spacing-lg); }
+.gap-xl { gap: var(--spacing-xl); }
+.gap-2xl { gap: var(--spacing-2xl); }
+
+/* Text size utilities */
+.text-xs { font-size: var(--text-xs); line-height: var(--leading-xs); }
+.text-sm { font-size: var(--text-sm); line-height: var(--leading-sm); }
+.text-base { font-size: var(--text-base); line-height: var(--leading-base); }
+.text-lg { font-size: var(--text-lg); line-height: var(--leading-lg); }
+.text-xl { font-size: var(--text-xl); line-height: var(--leading-xl); }
+.text-2xl { font-size: var(--text-2xl); line-height: var(--leading-2xl); }
+.text-3xl { font-size: var(--text-3xl); line-height: var(--leading-3xl); }
+.text-4xl { font-size: var(--text-4xl); line-height: var(--leading-4xl); }
+
+/* Font weight utilities */
+.font-normal { font-weight: var(--font-normal); }
+.font-medium { font-weight: var(--font-medium); }
+.font-semibold { font-weight: var(--font-semibold); }
+.font-bold { font-weight: var(--font-bold); }
+
+/* Border radius utilities */
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-xl { border-radius: var(--radius-xl); }
+.rounded-2xl { border-radius: var(--radius-2xl); }
+.rounded-full { border-radius: var(--radius-full); }
+
+/* Shadow utilities */
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+.shadow-xl { box-shadow: var(--shadow-xl); }
+.shadow-none { box-shadow: var(--shadow-none); }
+
+/* Animation utilities */
+.transition-fast { transition-duration: var(--duration-fast); }
+.transition-normal { transition-duration: var(--duration-normal); }
+.transition-slow { transition-duration: var(--duration-slow); }

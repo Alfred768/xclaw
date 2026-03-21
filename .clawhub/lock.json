@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "skills": {
+    "apple-reminders": {
+      "version": "1.0.0",
+      "installedAt": 1771793704219
+    },
+    "apple-notes": {
+      "version": "1.0.0",
+      "installedAt": 1771793705419
+    },
+    "himalaya": {
+      "version": "1.0.0",
+      "installedAt": 1771793706751
+    },
+    "notion": {
+      "version": "1.0.0",
+      "installedAt": 1771793711797
+    },
+    "obsidian": {
+      "version": "1.0.0",
+      "installedAt": 1771793713135
+    },
+    "trello": {
+      "version": "1.0.0",
+      "installedAt": 1771793714259
+    },
+    "github": {
+      "version": "1.0.0",
+      "installedAt": 1771793715499
+    },
+    "tmux": {
+      "version": "1.0.0",
+      "installedAt": 1771793717834
+    },
+    "openhue": {
+      "version": "1.0.0",
+      "installedAt": 1771793719587
+    },
+    "sonoscli": {
+      "version": "1.0.0",
+      "installedAt": 1771793720892
+    },
+    "spotify-player": {
+      "version": "1.0.0",
+      "installedAt": 1771793722254
+    },
+    "openai-image-gen": {
+      "version": "1.0.1",
+      "installedAt": 1771793723817
+    },
+    "nano-banana-pro": {
+      "version": "1.0.1",
+      "installedAt": 1771793725113
+    },
+    "video-frames": {
+      "version": "1.0.0",
+      "installedAt": 1771793726587
+    },
+    "weather": {
+      "version": "1.0.0",
+      "installedAt": 1771793764988
+    },
+    "blogwatcher": {
+      "version": "1.0.0",
+      "installedAt": 1771793766892
+    },
+    "summarize": {
+      "version": "1.0.0",
+      "installedAt": 1771793769623
+    },
+    "openai-whisper-api": {
+      "version": "1.0.0",
+      "installedAt": 1774018854336
+    },
+    "slack": {
+      "version": "1.0.0",
+      "installedAt": 1774018862440
+    },
+    "imsg": {
+      "version": "1.0.0",
+      "installedAt": 1774018865037
+    },
+    "1password": {
+      "version": "1.0.1",
+      "installedAt": 1774018867902
+    }
+  }
+}
