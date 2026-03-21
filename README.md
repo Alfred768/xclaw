@@ -77,122 +77,79 @@ XClaw embeds the official **OpenClaw** runtime, providing a seamless "battery-in
 ### Setup Wizard
 
 <p align="center">
-  <img src="resources/screenshot/Image/setup/cn/step1.png" style="width: 100%; height: auto;">
+  <img src="resources/screenshot/Image/setup/en/step1.png" style="width: 100%; height: auto;">
 </p>
 
-<p align="center">
-  <img src="resources/screenshot/Image/setup/cn/step2-1.png" style="width: 100%; height: auto;">
-  <img src="resources/screenshot/Image/setup/cn/step2-2.png" style="width: 100%; height: auto;">
-</p>
+<br/>
 
 <p align="center">
-  <img src="resources/screenshot/Image/setup/cn/step3.png" style="width: 100%; height: auto;">
+  <img src="resources/screenshot/Image/setup/en/step3.png" style="width: 100%; height: auto;">
 </p>
 
-<p align="center">
-  <img src="resources/screenshot/Image/setup/cn/step4.png" style="width: 100%; height: auto;">
-</p>
+<br/>
 
 <p align="center">
-  <img src="resources/screenshot/Image/setup/cn/step5.png" style="width: 100%; height: auto;">
+  <img src="resources/screenshot/Image/setup/en/step5.png" style="width: 100%; height: auto;">
 </p>
 
-<p align="center">
-  <img src="resources/screenshot/Image/setup/cn/step6.png" style="width: 100%; height: auto;">
-</p>
+<br/>
 
 <p align="center">
-  <img src="resources/screenshot/Image/setup/cn/step7.png" style="width: 100%; height: auto;">
+  <img src="resources/screenshot/Image/setup/en/step7.png" style="width: 100%; height: auto;">
 </p>
 
 ### Features
 
 <p align="center">
-  <img src="resources/screenshot/Image/Function/cn/chat-1.png" style="width: 100%; height: auto;">
+  <img src="resources/screenshot/Image/Function/en/chat-1.png" style="width: 100%; height: auto;">
 </p>
 
-<p align="center">
-  <img src="resources/screenshot/Image/Function/cn/chat-2.png" style="width: 100%; height: auto;">
-</p>
+<br/>
 
 <p align="center">
-  <img src="resources/screenshot/Image/Function/cn/briefing.png" style="width: 100%; height: auto;">
+  <img src="resources/screenshot/Image/Function/en/briefing.png" style="width: 100%; height: auto;">
 </p>
 
-<p align="center">
-  <img src="resources/screenshot/Image/Function/cn/briefing2.png" style="width: 100%; height: auto;">
-</p>
+<br/>
 
 <p align="center">
-  <img src="resources/screenshot/Image/Function/cn/todo.png" style="width: 100%; height: auto;">
+  <img src="resources/screenshot/Image/Function/en/todo.png" style="width: 100%; height: auto;">
 </p>
 
-<p align="center">
-  <img src="resources/screenshot/Image/Function/cn/todo2.png" style="width: 100%; height: auto;">
-</p>
+<br/>
 
 <p align="center">
-  <img src="resources/screenshot/Image/Function/cn/skill.png" style="width: 100%; height: auto;">
+  <img src="resources/screenshot/Image/Function/en/skill.png" style="width: 100%; height: auto;">
 </p>
 
-<p align="center">
-  <img src="resources/screenshot/Image/Function/cn/skill2.png" style="width: 100%; height: auto;">
-</p>
+<br/>
 
 <p align="center">
-  <img src="resources/screenshot/Image/Function/cn/subscription1.png" style="width: 100%; height: auto;">
+  <img src="resources/screenshot/Image/Function/en/subscription1.png" style="width: 100%; height: auto;">
 </p>
 
-<p align="center">
-  <img src="resources/screenshot/Image/Function/cn/subscription2.png" style="width: 100%; height: auto;">
-</p>
+<br/>
 
 <p align="center">
-  <img src="resources/screenshot/Image/Function/cn/subscription3.png" style="width: 100%; height: auto;">
+  <img src="resources/screenshot/Image/Function/en/usage.png" style="width: 100%; height: auto;">
 </p>
 
-<p align="center">
-  <img src="resources/screenshot/Image/Function/cn/usage.png" style="width: 100%; height: auto;">
-</p>
+<br/>
 
 <p align="center">
-  <img src="resources/screenshot/Image/Function/cn/usage2.png" style="width: 100%; height: auto;">
+  <img src="resources/screenshot/Image/Function/en/channel.png" style="width: 100%; height: auto;">
 </p>
 
-<p align="center">
-  <img src="resources/screenshot/Image/Function/cn/channel.png" style="width: 100%; height: auto;">
-</p>
+<br/>
 
 <p align="center">
-  <img src="resources/screenshot/Image/Function/cn/channel2.png" style="width: 100%; height: auto;">
+  <img src="resources/screenshot/Image/Function/en/account.png" style="width: 100%; height: auto;">
 </p>
 
-<p align="center">
-  <img src="resources/screenshot/Image/Function/cn/account.png" style="width: 100%; height: auto;">
-</p>
+<br/>
 
 <p align="center">
-  <img src="resources/screenshot/Image/Function/cn/account2.png" style="width: 100%; height: auto;">
-</p>
-
-<p align="center">
-  <img src="resources/screenshot/Image/Function/cn/setting.png" style="width: 100%; height: auto;">
-</p>
-
-<p align="center">
-  <img src="resources/screenshot/Image/Function/cn/dashboard.png" style="width: 100%; height: auto;">
-</p>
-
-<p align="center">
-  <img src="resources/screenshot/Image/Function/cn/dashboard2.png" style="width: 100%; height: auto;">
-</p>
-
-<p align="center">
-  <img src="resources/screenshot/Image/Function/cn/mission.png" style="width: 100%; height: auto;">
-</p>
-
-<p align="center">
-  <img src="resources/screenshot/Image/Function/cn/mission-2.png" style="width: 100%; height: auto;">
+  <img src="resources/screenshot/Image/Function/en/dashboard.png" style="width: 100%; height: auto;">
 </p>
 
 ---
