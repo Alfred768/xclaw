@@ -94,3 +94,6 @@ docs/superpowers/
 # Design context (internal)
 .impeccable.md
 .agents/
+
+# Local publish scripts + secrets
+publish/
