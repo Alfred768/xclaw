@@ -29,6 +29,9 @@ jobs:
             platform: linux
 
     runs-on: ${{ matrix.os }}
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
     
     steps:
       - name: Checkout code
@@ -77,10 +80,9 @@ jobs:
         if: matrix.platform == 'mac'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Code signing
-          CSC_LINK: ${{ secrets.MAC_CERTS }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
-          # Notarization
+          # Pass through secrets (may be empty in public repo)
+          MAC_CERTS: ${{ secrets.MAC_CERTS }}
+          MAC_CERTS_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -88,8 +90,21 @@ jobs:
           # Increase file descriptor limit to handle large number of files during code signing
           ulimit -n 65536
           echo "File descriptor limit: $(ulimit -n)"
-          
-          pnpm run package:mac
+
+          if [ -n "$MAC_CERTS" ]; then
+            echo "Using macOS signing + notarization"
+            export CSC_LINK="$MAC_CERTS"
+            export CSC_KEY_PASSWORD="$MAC_CERTS_PASSWORD"
+            export APPLE_ID="$APPLE_ID"
+            export APPLE_APP_SPECIFIC_PASSWORD="$APPLE_APP_SPECIFIC_PASSWORD"
+            export APPLE_TEAM_ID="$APPLE_TEAM_ID"
+          else
+            echo "No macOS signing secrets; disabling code signing"
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+          fi
+
+          pnpm run package:mac:ci
 
       # Windows specific steps
       - name: Build Windows
@@ -99,14 +114,14 @@ jobs:
           # For code signing (optional)
           # CSC_LINK: ${{ secrets.WIN_CERTS }}
           # CSC_KEY_PASSWORD: ${{ secrets.WIN_CERTS_PASSWORD }}
-        run: pnpm run package:win
+        run: pnpm run package:win:ci
 
       # Linux specific steps
       - name: Build Linux
         if: matrix.platform == 'linux'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm run package:linux
+        run: pnpm run package:linux:ci
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
