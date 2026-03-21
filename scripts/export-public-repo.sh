@@ -55,6 +55,9 @@ fi
 
 rsync "${RSYNC_ARGS[@]}" \
   --exclude ".git" \
+  --exclude ".pnpm-store" \
+  --exclude ".turbo" \
+  --exclude ".cache" \
   --exclude "supabase" \
   --exclude "alipay-auth" \
   --exclude "auth-site" \
@@ -65,6 +68,11 @@ rsync "${RSYNC_ARGS[@]}" \
   --exclude "docs/superpowers" \
   --exclude "Keys" \
   --exclude ".env*" \
+  --exclude "node_modules" \
+  --exclude "dist" \
+  --exclude "dist-electron" \
+  --exclude "release" \
+  --exclude "build" \
   --exclude "scripts/test-*.sh" \
   --exclude "scripts/migrate-*.sh" \
   --exclude "scripts/migrate-*.mjs" \
