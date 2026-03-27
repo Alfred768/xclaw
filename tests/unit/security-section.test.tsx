@@ -200,4 +200,15 @@ describe('SecuritySection', () => {
 
     expect(mocks.navigate).toHaveBeenCalledWith('/setup');
   });
+
+  it('renders a loading state panel while auth flow is pending', () => {
+    useAuthStore.setState((state) => ({
+      ...state,
+      authStatus: 'pending',
+    }));
+
+    render(<SecuritySection />);
+
+    expect(screen.getByTestId('account-state-panel-loading')).toBeInTheDocument();
+  });
 });

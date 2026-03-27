@@ -78,4 +78,14 @@ describe('ProfileSection', () => {
     expect(screen.getByText(publicUserId)).toBeInTheDocument();
     expect(screen.queryByText(internalUserId)).not.toBeInTheDocument();
   });
+
+  it('keeps action controls from being squeezed by long values', () => {
+    render(<ProfileSection />);
+
+    const saveButton = screen.getByRole('button', { name: 'Save' });
+    expect(saveButton).toHaveClass('shrink-0');
+
+    const copyButton = screen.getByRole('button', { name: '' });
+    expect(copyButton).toHaveClass('shrink-0');
+  });
 });

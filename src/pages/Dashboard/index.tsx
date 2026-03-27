@@ -1,19 +1,5 @@
-/**
- * Dashboard Page
- * Main overview page showing system status and quick actions
- */
-import { useEffect, useState } from 'react';
-import {
-  Pulse,
-  ChatCircle,
-  Broadcast,
-  PuzzlePiece,
-  Clock,
-  Gear,
-  Plus,
-  Terminal,
-  Radio,
-} from '@phosphor-icons/react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChatCircle, Gear, Plus, PuzzlePiece, Radio, Terminal } from '@phosphor-icons/react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,32 +8,39 @@ import { useGatewayStore } from '@/stores/gateway';
 import { useChannelsStore } from '@/stores/channels';
 import { useSkillsStore } from '@/stores/skills';
 import { useSettingsStore } from '@/stores/settings';
-import { StatusBadge } from '@/components/common/StatusBadge';
+import { DashboardSummary } from './components/DashboardSummary';
+import { DashboardStatePanel, type DashboardStateVariant } from './components/DashboardStatePanel';
 import { useTranslation } from 'react-i18next';
+
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
 
 export function Dashboard() {
   const { t } = useTranslation('dashboard');
   const gatewayStatus = useGatewayStore((state) => state.status);
-  const { channels, fetchChannels } = useChannelsStore();
-  const { skills, fetchSkills } = useSkillsStore();
+  const channels = useChannelsStore((state) => state.channels);
+  const fetchChannels = useChannelsStore((state) => state.fetchChannels);
+  const skills = useSkillsStore((state) => state.skills);
+  const fetchSkills = useSkillsStore((state) => state.fetchSkills);
   const devModeUnlocked = useSettingsStore((state) => state.devModeUnlocked);
 
   const isGatewayRunning = gatewayStatus.state === 'running';
   const [uptime, setUptime] = useState(0);
 
-  // Fetch data only when gateway is running
   useEffect(() => {
     if (isGatewayRunning) {
-      fetchChannels();
-      fetchSkills();
+      void fetchChannels();
+      void fetchSkills();
     }
-  }, [fetchChannels, fetchSkills, isGatewayRunning]);
+  }, [isGatewayRunning, fetchChannels, fetchSkills]);
 
-  // Calculate statistics safely
-  const connectedChannels = Array.isArray(channels) ? channels.filter((c) => c.status === 'connected').length : 0;
-  const enabledSkills = Array.isArray(skills) ? skills.filter((s) => s.enabled).length : 0;
-
-  // Update uptime periodically
   useEffect(() => {
     const updateUptime = () => {
       if (gatewayStatus.connectedAt) {
@@ -57,14 +50,31 @@ export function Dashboard() {
       }
     };
 
-    // Update immediately
     updateUptime();
-
-    // Update every second
     const interval = setInterval(updateUptime, 1000);
-
     return () => clearInterval(interval);
   }, [gatewayStatus.connectedAt]);
+
+  const connectedChannels = useMemo(
+    () => channels.filter((channel) => channel.status === 'connected').length,
+    [channels]
+  );
+  const enabledSkills = useMemo(
+    () => skills.filter((skill) => skill.enabled).length,
+    [skills]
+  );
+
+  const stateVariant: DashboardStateVariant = useMemo(() => {
+    if (gatewayStatus.state === 'starting' || gatewayStatus.state === 'reconnecting') return 'loading';
+    if (gatewayStatus.state === 'error') return 'error';
+    if (connectedChannels === 0 && enabledSkills === 0) return 'empty';
+    return 'success';
+  }, [gatewayStatus.state, connectedChannels, enabledSkills]);
+
+  const handleRetry = () => {
+    void fetchChannels();
+    void fetchSkills();
+  };
 
   const openDevConsole = async () => {
     try {
@@ -73,227 +83,149 @@ export function Dashboard() {
         url?: string;
         error?: string;
       };
+
       if (result.success && result.url) {
         window.electron.openExternal(result.url);
       } else {
         console.error('Failed to get Dev Console URL:', result.error);
       }
-    } catch (err) {
-      console.error('Error opening Dev Console:', err);
+    } catch (error) {
+      console.error('Error opening Dev Console:', error);
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Status Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Gateway Status */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">{t('gateway')}</CardTitle>
-            <Pulse className="h-4 w-4 text-muted-foreground" weight="regular" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <StatusBadge status={gatewayStatus.state} />
-            </div>
-            {gatewayStatus.state === 'running' && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('port', { port: gatewayStatus.port })} | {t('pid', { pid: gatewayStatus.pid || 'N/A' })}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Channels */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">{t('channels')}</CardTitle>
-            <Broadcast className="h-4 w-4 text-muted-foreground" weight="regular" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{connectedChannels}</div>
-            <p className="text-xs text-muted-foreground">
-              {t('connectedOf', { connected: connectedChannels, total: channels.length })}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Skills */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">{t('skills')}</CardTitle>
-            <PuzzlePiece className="h-4 w-4 text-muted-foreground" weight="regular" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{enabledSkills}</div>
-            <p className="text-xs text-muted-foreground">
-              {t('enabledOf', { enabled: enabledSkills, total: skills.length })}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Uptime */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">{t('uptime')}</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" weight="regular" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {uptime > 0 ? formatUptime(uptime) : '—'}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {gatewayStatus.state === 'running' ? t('sinceRestart') : t('gatewayNotRunning')}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('quickActions.title')}</CardTitle>
-          <CardDescription>{t('quickActions.description')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <Button variant="outline" className="h-auto flex-col gap-2 py-4" asChild>
-              <Link to="/channels">
-                <Plus className="h-5 w-5" weight="bold" />
-                <span>{t('quickActions.addChannel')}</span>
-              </Link>
-            </Button>
-            <Button variant="outline" className="h-auto flex-col gap-2 py-4" asChild>
-              <Link to="/skills">
-                <PuzzlePiece className="h-5 w-5" weight="regular" />
-                <span>{t('quickActions.browseSkills')}</span>
-              </Link>
-            </Button>
-            <Button variant="outline" className="h-auto flex-col gap-2 py-4" asChild>
-              <Link to="/">
-                <ChatCircle className="h-5 w-5" weight="regular" />
-                <span>{t('quickActions.openChat')}</span>
-              </Link>
-            </Button>
-            <Button variant="outline" className="h-auto flex-col gap-2 py-4" asChild>
-              <Link to="/settings">
-                <Gear className="h-5 w-5" weight="regular" />
-                <span>{t('quickActions.settings')}</span>
-              </Link>
-            </Button>
-            {devModeUnlocked && (
-              <Button
-                variant="outline"
-                className="h-auto flex-col gap-2 py-4"
-                onClick={openDevConsole}
-              >
-                <Terminal className="h-5 w-5" weight="regular" />
-                <span>{t('quickActions.devConsole')}</span>
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Connected Channels */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">{t('connectedChannels')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {channels.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Radio className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>{t('noChannels')}</p>
-                <Button variant="link" asChild className="mt-2">
-                  <Link to="/channels">{t('addFirst')}</Link>
+    <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+        <section className="space-y-4">
+          <Card className="border-border/70">
+            <CardHeader>
+              <CardTitle>{t('quickActions.title')}</CardTitle>
+              <CardDescription>{t('quickActions.description')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <Button variant="outline" className="h-auto flex-col gap-2 py-4" asChild>
+                  <Link to="/channels" data-testid="dashboard-quick-action-add-channel">
+                    <Plus className="h-5 w-5" weight="bold" />
+                    <span>{t('quickActions.addChannel')}</span>
+                  </Link>
                 </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {channels.slice(0, 5).map((channel) => (
-                  <div
-                    key={channel.id}
-                    className="flex items-center justify-between rounded-lg border p-3"
+
+                <Button variant="outline" className="h-auto flex-col gap-2 py-4" asChild>
+                  <Link to="/skills" data-testid="dashboard-quick-action-browse-skills">
+                    <PuzzlePiece className="h-5 w-5" weight="regular" />
+                    <span>{t('quickActions.browseSkills')}</span>
+                  </Link>
+                </Button>
+
+                <Button variant="outline" className="h-auto flex-col gap-2 py-4" asChild>
+                  <Link to="/" data-testid="dashboard-quick-action-open-chat">
+                    <ChatCircle className="h-5 w-5" weight="regular" />
+                    <span>{t('quickActions.openChat')}</span>
+                  </Link>
+                </Button>
+
+                <Button variant="outline" className="h-auto flex-col gap-2 py-4" asChild>
+                  <Link to="/settings" data-testid="dashboard-quick-action-settings">
+                    <Gear className="h-5 w-5" weight="regular" />
+                    <span>{t('quickActions.settings')}</span>
+                  </Link>
+                </Button>
+
+                {devModeUnlocked && (
+                  <Button
+                    variant="outline"
+                    className="h-auto flex-col gap-2 py-4"
+                    onClick={openDevConsole}
+                    data-testid="dashboard-quick-action-dev-console"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg">
-                        {channel.type === 'whatsapp' && '📱'}
-                        {channel.type === 'telegram' && '✈️'}
-                        {channel.type === 'discord' && '🎮'}
-                      </span>
-                      <div>
-                        <p className="font-medium">{channel.name}</p>
-                        <p className="text-xs text-muted-foreground capitalize">
-                          {channel.type}
-                        </p>
-                      </div>
-                    </div>
-                    <StatusBadge status={channel.status} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Enabled Skills */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">{t('activeSkills')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {skills.filter((s) => s.enabled).length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <PuzzlePiece className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>{t('noSkills')}</p>
-                <Button variant="link" asChild className="mt-2">
-                  <Link to="/skills">{t('enableSome')}</Link>
-                </Button>
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {skills
-                  .filter((s) => s.enabled)
-                  .slice(0, 12)
-                  .map((skill) => (
-                    <Badge key={skill.id} variant="secondary">
-                      {skill.icon && <span className="mr-1">{skill.icon}</span>}
-                      {skill.name}
-                    </Badge>
-                  ))}
-                {skills.filter((s) => s.enabled).length > 12 && (
-                  <Badge variant="outline">
-                    {t('more', { count: skills.filter((s) => s.enabled).length - 12 })}
-                  </Badge>
+                    <Terminal className="h-5 w-5" weight="regular" />
+                    <span>{t('quickActions.devConsole')}</span>
+                  </Button>
                 )}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/70">
+            <CardHeader>
+              <CardTitle className="text-lg">{t('connectedChannels')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {channels.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <Radio className="mx-auto mb-2 h-8 w-8 opacity-50" />
+                  <p>{t('noChannels')}</p>
+                  <Button variant="link" asChild className="mt-1 h-auto p-0">
+                    <Link to="/channels">{t('addFirst')}</Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {channels.slice(0, 6).map((channel) => (
+                    <div key={channel.id} className="flex items-center justify-between rounded-md border border-border/70 px-3 py-2">
+                      <div>
+                        <p className="text-sm font-medium">{channel.name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{channel.type}</p>
+                      </div>
+                      <Badge variant={channel.status === 'connected' ? 'default' : 'secondary'}>
+                        {channel.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/70">
+            <CardHeader>
+              <CardTitle className="text-lg">{t('activeSkills')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {enabledSkills === 0 ? (
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">{t('noSkills')}</p>
+                  <Button variant="link" asChild className="h-auto p-0 text-sm">
+                    <Link to="/skills">{t('enableSome')}</Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {skills
+                    .filter((skill) => skill.enabled)
+                    .slice(0, 12)
+                    .map((skill) => (
+                      <Badge key={skill.id} variant="secondary">
+                        {skill.icon && <span className="mr-1">{skill.icon}</span>}
+                        {skill.name}
+                      </Badge>
+                    ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        <aside className="space-y-4">
+          <DashboardSummary
+            gatewayStatus={gatewayStatus}
+            connectedChannels={connectedChannels}
+            totalChannels={channels.length}
+            enabledSkills={enabledSkills}
+            totalSkills={skills.length}
+            uptimeLabel={uptime > 0 ? formatUptime(uptime) : '--'}
+          />
+          <DashboardStatePanel
+            variant={stateVariant}
+            error={gatewayStatus.error}
+            onRetry={handleRetry}
+          />
+        </aside>
       </div>
     </div>
   );
-}
-
-/**
- * Format uptime in human-readable format
- */
-function formatUptime(seconds: number): string {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-
-  if (days > 0) {
-    return `${days}d ${hours}h`;
-  } else if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  } else {
-    return `${minutes}m`;
-  }
 }
 
 export default Dashboard;

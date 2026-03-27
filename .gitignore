@@ -76,7 +76,6 @@ Keys/
 # Sensitive backend and private docs (for public client export)
 supabase/
 alipay-auth/
-auth-site/
 docs/alipay_login.md
 docs/yunwu-api.md
 docs/DATABASE_MIGRATION_GUIDE.md

@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { useSettingsStore } from '@/stores/settings';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
+import { preloadRouteByPath } from '@/lib/routePreload';
 
 interface MobileNavProps {
   isOpen: boolean;
@@ -103,6 +104,7 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-50 bg-black/50 md:hidden"
+            data-testid="mobile-nav-backdrop"
             onClick={onClose}
           />
 
@@ -112,10 +114,13 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed left-0 top-0 bottom-0 z-50 w-72 bg-background shadow-xl md:hidden"
+            className="fixed bottom-0 left-0 top-0 z-50 w-72 border-r border-border/70 bg-background/95 shadow-xl md:hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b p-4">
+            <div className="flex items-center justify-between border-b border-border/70 p-4">
               <span className="text-lg font-semibold">Menu</span>
               <Button
                 variant="ghost"
@@ -134,12 +139,14 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
                   key={item.to}
                   to={item.to}
                   onClick={handleNavClick}
+                  onPointerDown={() => preloadRouteByPath(item.to)}
+                  onFocus={() => preloadRouteByPath(item.to)}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                      'hover:bg-accent hover:text-accent-foreground',
+                      'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                      'hover:bg-accent/80 hover:text-accent-foreground',
                       isActive
-                        ? 'bg-accent text-accent-foreground'
+                        ? 'bg-card text-accent-foreground shadow-[inset_0_0_0_1px_hsl(var(--border))]'
                         : 'text-muted-foreground'
                     )
                   }
@@ -151,7 +158,7 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
             </nav>
 
             {/* Footer */}
-            <div className="border-t p-4">
+            <div className="border-t border-border/70 p-4">
               {devModeUnlocked && (
                 <Button
                   variant="ghost"

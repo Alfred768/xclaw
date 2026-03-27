@@ -16,20 +16,35 @@ import { useAccountStore } from '@/stores/account';
 import { useAuthStore } from '@/stores/auth';
 import { supabase } from '@/lib/supabase';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
+import {
+  loadAccountPage,
+  loadBriefingPage,
+  loadChannelsPage,
+  loadChatPage,
+  loadCronPage,
+  loadDashboardPage,
+  loadSettingsPage,
+  loadSetupPage,
+  loadSkillsPage,
+  loadSubscriptionPage,
+  loadTodoPage,
+  loadUsagePage,
+  warmupRouteModules,
+} from '@/lib/routePreload';
 
 // Lazy load pages for code splitting
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Chat = lazy(() => import('./pages/Chat'));
-const Channels = lazy(() => import('./pages/Channels'));
-const Skills = lazy(() => import('./pages/Skills'));
-const Cron = lazy(() => import('./pages/Cron'));
-const Settings = lazy(() => import('./pages/Settings'));
-const Setup = lazy(() => import('./pages/Setup'));
-const Todo = lazy(() => import('./pages/Todo'));
-const Briefing = lazy(() => import('./pages/Briefing'));
-const Usage = lazy(() => import('./pages/Usage'));
-const Account = lazy(() => import('./pages/Account'));
-const Subscription = lazy(() => import('./pages/Subscription'));
+const Dashboard = lazy(loadDashboardPage);
+const Chat = lazy(loadChatPage);
+const Channels = lazy(loadChannelsPage);
+const Skills = lazy(loadSkillsPage);
+const Cron = lazy(loadCronPage);
+const Settings = lazy(loadSettingsPage);
+const Setup = lazy(loadSetupPage);
+const Todo = lazy(loadTodoPage);
+const Briefing = lazy(loadBriefingPage);
+const Usage = lazy(loadUsagePage);
+const Account = lazy(loadAccountPage);
+const Subscription = lazy(loadSubscriptionPage);
 
 // Page loader component for Suspense fallback
 function PageLoader() {
@@ -135,6 +150,11 @@ function App() {
   useEffect(() => {
     initGateway();
   }, [initGateway]);
+
+  // Warm route chunks in idle time so sidebar navigation feels instant.
+  useEffect(() => {
+    warmupRouteModules();
+  }, []);
 
   useEffect(() => {
     if (!supabase) {

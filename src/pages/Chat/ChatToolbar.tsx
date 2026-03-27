@@ -27,12 +27,13 @@ export function ChatToolbar() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" data-testid="chat-toolbar">
       {/* Session Selector */}
       <div className="relative">
         <select
           value={currentSessionKey}
           onChange={handleSessionChange}
+          data-testid="chat-session-select"
           className={cn(
             'appearance-none rounded-md border border-border bg-background px-3 py-1.5 pr-8',
             'text-sm text-foreground cursor-pointer',
@@ -62,6 +63,7 @@ export function ChatToolbar() {
             size="icon"
             className="h-8 w-8"
             onClick={newSession}
+            data-testid="chat-new-session"
           >
             <Plus className="h-4 w-4" weight="bold" />
           </Button>
@@ -83,6 +85,7 @@ export function ChatToolbar() {
             )}
             onClick={() => deleteSession(currentSessionKey)}
             disabled={currentSessionKey === 'agent:main:main'}
+            data-testid="chat-delete-session"
           >
             <Trash className="h-4 w-4" weight="regular" />
           </Button>
@@ -101,6 +104,7 @@ export function ChatToolbar() {
             className="h-8 w-8"
             onClick={() => refresh()}
             disabled={loading}
+            data-testid="chat-refresh-history"
           >
             <ArrowClockwise className={cn('h-4 w-4', loading && 'animate-spin')} weight="bold" />
           </Button>
@@ -121,6 +125,7 @@ export function ChatToolbar() {
               showThinking && 'bg-primary/10 text-primary',
             )}
             onClick={toggleThinking}
+            data-testid="chat-thinking-toggle"
           >
             <Brain className="h-4 w-4" weight="regular" />
           </Button>

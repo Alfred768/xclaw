@@ -4,17 +4,8 @@
  */
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  Check,
-  X,
   Plus,
-  Trash,
-  PencilSimple,
-  FloppyDisk,
   ListChecks,
-  FileText,
-  Clock,
-  CheckCircle,
-  Circle,
   Upload,
   CircleNotch,
 } from '@phosphor-icons/react';
@@ -25,6 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { parseTodoItemsFromResponse } from '@/stores/chat';
+import { TodoListSection } from './components/TodoListSection';
+import { TodoStateActionLink, TodoStatePanel } from './components/TodoStatePanel';
 
 interface TodoItem {
   id: string;
@@ -50,7 +43,7 @@ export function Todo() {
 
   // Fetch all tasks on mount
   useEffect(() => {
-    fetchTasks();
+    void fetchTasks();
   }, []);
 
   const fetchTasks = async () => {
@@ -142,7 +135,7 @@ export function Todo() {
           error?: string;
         };
         if (addResult.success && addResult.tasks) {
-          setTasks((prev) => [...prev, ...addResult.tasks!]);
+          setTasks((prev) => [...prev, ...addResult.tasks]);
         }
         return;
       }
@@ -223,7 +216,7 @@ ${languageInstruction}`;
           error?: string;
         };
         if (addResult.success && addResult.tasks) {
-          setTasks((prev) => [...prev, ...addResult.tasks!]);
+          setTasks((prev) => [...prev, ...addResult.tasks]);
         }
       } else {
         console.log('[Todo] No todo items extracted');
@@ -264,7 +257,7 @@ ${languageInstruction}`;
     } finally {
       setExtracting(false);
     }
-  }, [tasks, extractTodosFromFile]);
+  }, [extractTodosFromFile]);
 
   // Handle file input change
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -314,7 +307,7 @@ ${languageInstruction}`;
         error?: string;
       };
       if (result.success && result.task) {
-        setTasks(tasks.map((t) => (t.id === id ? result.task! : t)));
+        setTasks(tasks.map((task) => (task.id === id ? result.task as TodoItem : task)));
       } else {
         setError(result.error || 'Failed to toggle task');
       }
@@ -330,7 +323,7 @@ ${languageInstruction}`;
         error?: string;
       };
       if (result.success) {
-        setTasks(tasks.filter((t) => t.id !== id));
+        setTasks(tasks.filter((task) => task.id !== id));
       } else {
         setError(result.error || 'Failed to delete task');
       }
@@ -362,7 +355,7 @@ ${languageInstruction}`;
         error?: string;
       };
       if (result.success && result.task) {
-        setTasks(tasks.map((t) => (t.id === id ? result.task! : t)));
+        setTasks(tasks.map((task) => (task.id === id ? result.task as TodoItem : task)));
         setEditingId(null);
         setEditingContent('');
       } else {
@@ -373,22 +366,20 @@ ${languageInstruction}`;
     }
   };
 
-  const pendingTasks = tasks.filter((t) => t.status === 'pending');
-  const completedTasks = tasks.filter((t) => t.status === 'completed');
+  const pendingTasks = tasks.filter((task) => task.status === 'pending');
+  const completedTasks = tasks.filter((task) => task.status === 'completed');
 
   return (
-    <div className="container mx-auto py-8 max-w-4xl">
+    <div className="container mx-auto max-w-4xl py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-primary/10 rounded-lg">
+          <div className="rounded-lg bg-primary/10 p-3">
             <ListChecks className="h-8 w-8 text-primary" />
           </div>
           <div>
             <h1 className="text-3xl font-bold">{t('title')}</h1>
-            <p className="text-muted-foreground">
-              {t('description')}
-            </p>
+            <p className="text-muted-foreground">{t('description')}</p>
           </div>
         </div>
         <Badge variant="outline" className="text-sm">
@@ -399,26 +390,26 @@ ${languageInstruction}`;
       {/* Drop Zone - Extract todos from file */}
       <Card
         className={cn(
-          "mb-6 border-2 border-dashed transition-colors cursor-pointer",
-          dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
-          extracting && "opacity-50 pointer-events-none"
+          'mb-6 cursor-pointer border-2 border-dashed transition-colors',
+          dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50',
+          extracting && 'pointer-events-none opacity-50'
         )}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
       >
-        <CardContent className="py-6 flex flex-col items-center justify-center text-center">
+        <CardContent className="flex flex-col items-center justify-center py-6 text-center">
           {extracting ? (
             <>
-              <CircleNotch className="h-10 w-10 text-primary animate-spin mb-3" />
+              <CircleNotch className="mb-3 h-10 w-10 animate-spin text-primary" />
               <p className="text-muted-foreground">{t('extracting') || 'Extracting todos...'}</p>
             </>
           ) : (
             <>
-              <Upload className={cn("h-10 w-10 mb-3", dragOver ? "text-primary" : "text-muted-foreground")} />
+              <Upload className={cn('mb-3 h-10 w-10', dragOver ? 'text-primary' : 'text-muted-foreground')} />
               <p className="font-medium">{t('dropFile') || 'Drop file here to extract todos'}</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {t('dropFileDesc') || 'Supports .txt, .md and other text files'}
               </p>
             </>
@@ -434,237 +425,77 @@ ${languageInstruction}`;
         </CardContent>
       </Card>
 
-      {/* Add new task */}
+      {/* Quick add */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="flex gap-2">
             <Input
               placeholder={t('addTask')}
               value={newTaskContent}
-              onChange={(e) => setNewTaskContent(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addTask()}
+              onChange={(event) => setNewTaskContent(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  void addTask();
+                }
+              }}
               className="flex-1"
+              data-testid="todo-quick-add-input"
             />
-            <Button onClick={addTask} disabled={!newTaskContent.trim()}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button
+              onClick={() => {
+                void addTask();
+              }}
+              disabled={!newTaskContent.trim()}
+              data-testid="todo-quick-add-submit"
+            >
+              <Plus className="mr-2 h-4 w-4" />
               {t('add')}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Error message */}
-      {error && (
-        <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-sm">
-          {error}
-          <button
-            onClick={() => setError(null)}
-            className="ml-2 underline"
-          >
-            {t('dismiss')}
-          </button>
-        </div>
-      )}
+      {error ? (
+        <TodoStatePanel
+          state="error"
+          error={error}
+          onDismissError={() => setError(null)}
+        />
+      ) : null}
 
-      {/* Loading state */}
       {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">{t('loading')}</p>
-        </div>
+        <TodoStatePanel state="loading" description={t('loading')} />
       ) : tasks.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-medium mb-2">{t('noTasks')}</h3>
-            <p className="text-muted-foreground mb-4">
-              {t('noTasksDesc')}
-            </p>
-            <Button variant="outline" asChild>
-              <a href="/chat">{t('goToChat')}</a>
-            </Button>
-          </CardContent>
-        </Card>
+        <TodoStatePanel
+          state="empty"
+          title={t('noTasks')}
+          description={t('noTasksDesc')}
+        >
+          <TodoStateActionLink href="/chat" label={t('goToChat')} />
+        </TodoStatePanel>
       ) : (
-        <div className="space-y-6">
-          {/* Pending tasks */}
-          {pendingTasks.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Circle className="h-4 w-4" />
-                {t('pendingTasks')} ({pendingTasks.length})
-              </h2>
-              {pendingTasks.map((task) => (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  isEditing={editingId === task.id}
-                  editingContent={editingContent}
-                  onToggle={() => toggleTask(task.id)}
-                  onDelete={() => deleteTask(task.id)}
-                  onStartEdit={() => startEditing(task)}
-                  onCancelEdit={cancelEditing}
-                  onSaveEdit={() => saveEditing(task.id)}
-                  onEditingContentChange={setEditingContent}
-                  t={t}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Completed tasks */}
-          {completedTasks.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                {t('completedTasks')} ({completedTasks.length})
-              </h2>
-              {completedTasks.map((task) => (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  isEditing={editingId === task.id}
-                  editingContent={editingContent}
-                  onToggle={() => toggleTask(task.id)}
-                  onDelete={() => deleteTask(task.id)}
-                  onStartEdit={() => startEditing(task)}
-                  onCancelEdit={cancelEditing}
-                  onSaveEdit={() => saveEditing(task.id)}
-                  onEditingContentChange={setEditingContent}
-                  t={t}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        <>
+          <TodoStatePanel
+            state="success"
+            title={`${pendingTasks.length} ${t('pending')} / ${completedTasks.length} ${t('completed')}`}
+            description={t('description')}
+          />
+          <TodoListSection
+            pendingTasks={pendingTasks}
+            completedTasks={completedTasks}
+            editingId={editingId}
+            editingContent={editingContent}
+            onToggle={toggleTask}
+            onDelete={deleteTask}
+            onStartEdit={startEditing}
+            onCancelEdit={cancelEditing}
+            onSaveEdit={saveEditing}
+            onEditingContentChange={setEditingContent}
+            t={t}
+          />
+        </>
       )}
     </div>
-  );
-}
-
-// Task item component
-interface TaskItemProps {
-  task: TodoItem;
-  isEditing: boolean;
-  editingContent: string;
-  onToggle: () => void;
-  onDelete: () => void;
-  onStartEdit: () => void;
-  onCancelEdit: () => void;
-  onSaveEdit: () => void;
-  onEditingContentChange: (content: string) => void;
-  t: (key: string) => string;
-}
-
-function TaskItem({
-  task,
-  isEditing,
-  editingContent,
-  onToggle,
-  onDelete,
-  onStartEdit,
-  onCancelEdit,
-  onSaveEdit,
-  onEditingContentChange,
-  t,
-}: TaskItemProps) {
-  const isCompleted = task.status === 'completed';
-
-  return (
-    <Card className={cn(
-      "transition-all",
-      isCompleted && "opacity-60"
-    )}>
-      <CardContent className="py-3 px-4">
-        <div className="flex items-center gap-3">
-          {/* Checkbox */}
-          <button
-            onClick={onToggle}
-            className={cn(
-              "flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
-              isCompleted
-                ? "bg-green-500 border-green-500 text-white"
-                : "border-muted-foreground hover:border-primary"
-            )}
-          >
-            {isCompleted && <Check className="h-3 w-3" />}
-          </button>
-
-          {/* Content */}
-          {isEditing ? (
-            <Input
-              value={editingContent}
-              onChange={(e) => onEditingContentChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') onSaveEdit();
-                if (e.key === 'Escape') onCancelEdit();
-              }}
-              className="flex-1 h-8"
-              autoFocus
-            />
-          ) : (
-            <span className={cn(
-              "flex-1",
-              isCompleted && "line-through text-muted-foreground"
-            )}>
-              {task.content}
-            </span>
-          )}
-
-          {/* Actions */}
-          <div className="flex items-center gap-1">
-            {isEditing ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-green-500"
-                  onClick={onSaveEdit}
-                >
-                  <Save className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={onCancelEdit}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={onStartEdit}
-                >
-                  <PencilSimple className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-destructive"
-                  onClick={onDelete}
-                >
-                  <Trash className="h-4 w-4" />
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Timestamp */}
-        <div className="flex items-center gap-2 mt-2 ml-8 text-xs text-muted-foreground">
-          <Clock className="h-3 w-3" />
-          <span>{t('created')}: {new Date(task.created_at).toLocaleDateString()}</span>
-          {task.updated_at !== task.created_at && (
-            <span>• {t('updated')}: {new Date(task.updated_at).toLocaleDateString()}</span>
-          )}
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 

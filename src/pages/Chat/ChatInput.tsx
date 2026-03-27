@@ -343,6 +343,7 @@ export function ChatInput({ onSend, onStop, disabled = false, sending = false }:
             onClick={pickFiles}
             disabled={disabled || sending}
             title="Attach files"
+            data-testid="chat-attach-button"
           >
             <Paperclip className="h-4 w-4" weight="regular" />
           </Button>
@@ -365,6 +366,7 @@ export function ChatInput({ onSend, onStop, disabled = false, sending = false }:
               disabled={disabled}
               className="min-h-[44px] max-h-[200px] resize-none pr-4"
               rows={1}
+              data-testid="chat-input-textarea"
             />
           </div>
 
@@ -376,6 +378,7 @@ export function ChatInput({ onSend, onStop, disabled = false, sending = false }:
             className="shrink-0 h-[44px] w-[44px]"
             variant={sending ? 'destructive' : 'default'}
             title={sending ? 'Stop' : 'Send'}
+            data-testid={sending ? 'chat-stop-button' : 'chat-send-button'}
           >
             {sending ? (
               <Stop className="h-4 w-4" weight="fill" />

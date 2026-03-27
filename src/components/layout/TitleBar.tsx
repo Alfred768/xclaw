@@ -18,11 +18,12 @@ export function TitleBar({ onMenuClick }: TitleBarProps) {
   if (isMac) {
     // macOS: just a drag region with hamburger for mobile
     return (
-      <div className="drag-region h-10 shrink-0 border-b bg-background flex items-center">
+      <div className="drag-region flex h-11 shrink-0 items-center border-b border-border/60 bg-background/92 px-2">
         {/* Mobile menu button - only visible on small screens */}
         <button
           onClick={onMenuClick}
-          className="no-drag h-10 w-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors md:hidden z-10"
+          className="no-drag z-10 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground md:hidden"
+          aria-label="Open menu"
         >
           <List className="h-5 w-5" weight="regular" />
         </button>
@@ -60,41 +61,46 @@ function WindowsTitleBar({ onMenuClick }: TitleBarProps) {
   };
 
   return (
-    <div className="drag-region flex h-10 shrink-0 items-center justify-between border-b bg-background">
+    <div className="drag-region flex h-11 shrink-0 items-center justify-between border-b border-border/60 bg-background/92 px-2">
       {/* Left: Mobile menu + Icon + App Name */}
-      <div className="no-drag flex items-center gap-2 pl-3">
+      <div className="no-drag flex items-center gap-2">
         {/* Mobile menu button - only visible on small screens */}
         <button
           onClick={onMenuClick}
-          className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors md:hidden -ml-1"
+          className="-ml-1 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground md:hidden"
+          aria-label="Open menu"
         >
           <List className="h-5 w-5" weight="regular" />
         </button>
-        <img src={logoSvg} alt="XClaw" className="h-5 w-auto" />
-        <span className="text-xs font-medium text-muted-foreground select-none hidden sm:inline">
-          XClaw
-        </span>
+        <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/85 px-2 py-1 shadow-sm">
+          <img src={logoSvg} alt="XClaw" className="h-4 w-auto" />
+          <span className="hidden select-none text-xs font-medium text-muted-foreground sm:inline">
+            XClaw
+          </span>
+        </div>
       </div>
 
       {/* Right: Window Controls */}
-      <div className="no-drag flex h-full">
+      <div className="no-drag flex items-center gap-1 rounded-xl border border-border/70 bg-background/80 p-1 shadow-sm">
         <button
           onClick={handleMinimize}
-          className="flex h-full w-11 items-center justify-center text-muted-foreground hover:bg-accent transition-colors"
+          className="flex h-7 w-9 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
           title="Minimize"
         >
           <Minus className="h-4 w-4" weight="regular" />
         </button>
         <button
           onClick={handleMaximize}
-          className="flex h-full w-11 items-center justify-center text-muted-foreground hover:bg-accent transition-colors"
+          className={maximized
+            ? 'flex h-7 w-9 items-center justify-center rounded bg-accent/70 text-foreground transition-colors hover:bg-accent'
+            : 'flex h-7 w-9 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground'}
           title={maximized ? 'Restore' : 'Maximize'}
         >
           {maximized ? <Copy className="h-3.5 w-3.5" weight="regular" /> : <Square className="h-3.5 w-3.5" weight="regular" />}
         </button>
         <button
           onClick={handleClose}
-          className="flex h-full w-11 items-center justify-center text-muted-foreground hover:bg-red-500 hover:text-white transition-colors"
+          className="flex h-7 w-9 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-red-500 hover:text-white"
           title="Close"
         >
           <X className="h-4 w-4" weight="regular" />

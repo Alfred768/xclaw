@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { useAccountStore } from '@/stores/account';
 import { toast } from 'sonner';
+import { AccountStatePanel } from './components/AccountStatePanel';
 
 export function DeveloperSection() {
   const { t } = useTranslation('account');
@@ -79,6 +80,28 @@ export function DeveloperSection() {
 
   return (
     <>
+      <AccountStatePanel
+        state={isLoading ? 'loading' : apiKeys.length > 0 ? 'success' : 'empty'}
+        title={
+          isLoading
+            ? t('developer.stateLoading', { defaultValue: 'Loading API keys...' })
+            : apiKeys.length > 0
+              ? t('developer.stateSuccess', { defaultValue: 'API keys are active' })
+              : t('developer.stateEmpty', { defaultValue: 'No API keys yet' })
+        }
+        description={
+          apiKeys.length > 0
+            ? t('developer.description')
+            : t('developer.noKeysDesc')
+        }
+        action={
+          <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" weight="bold" />
+            {t('developer.createKey')}
+          </Button>
+        }
+      />
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -102,18 +125,18 @@ export function DeveloperSection() {
               {apiKeys.map((key) => (
                 <div
                   key={key.id}
-                  className="flex items-center justify-between rounded-lg border p-4"
+                  className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-4"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <Key className="h-5 w-5 text-muted-foreground" weight="regular" />
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-medium">{key.name || 'API Key'}</p>
-                      <p className="text-sm text-muted-foreground font-mono">
+                      <p className="break-all text-sm text-muted-foreground font-mono">
                         {key.key_prefix}...
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex shrink-0 items-center gap-4">
                     <div className="text-sm text-muted-foreground text-right">
                       <p>{t('developer.created')}: {formatDate(key.created_at)}</p>
                       <p>{t('developer.lastUsed')}: {formatDate(key.last_used_at)}</p>

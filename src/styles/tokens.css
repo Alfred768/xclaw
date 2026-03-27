@@ -13,19 +13,17 @@
      COLOR PALETTE
      ======================================== */
 
-  /* Primary Colors (Blue-based)
-   * Base hue: 221.2, Base saturation: 83.2%, Base lightness: 53.3%
-   */
-  --primary-50: 214 100% 97%;
-  --primary-100: 214 95% 93%;
-  --primary-200: 213 97% 87%;
-  --primary-300: 212 96% 78%;
-  --primary-400: 213 94% 68%;
-  --primary-500: 221.2 83.2% 53.3%; /* Base */
-  --primary-600: 221 83% 46%;
-  --primary-700: 220 83% 38%;
-  --primary-800: 220 81% 32%;
-  --primary-900: 221 82% 26%;
+  /* Primary Colors (Claude-like warm ochre) */
+  --primary-50: 30 70% 97%;
+  --primary-100: 28 72% 92%;
+  --primary-200: 26 73% 85%;
+  --primary-300: 24 70% 74%;
+  --primary-400: 22 65% 60%;
+  --primary-500: 20 63% 48%; /* Base */
+  --primary-600: 19 67% 42%;
+  --primary-700: 18 66% 34%;
+  --primary-800: 18 63% 28%;
+  --primary-900: 17 58% 22%;
 
   /* Success Colors (Green)
    * Conveys positive actions, success states
@@ -69,19 +67,17 @@
   --error-800: 0 70% 35%;
   --error-900: 0 63% 31%;
 
-  /* Neutral Colors (Gray)
-   * Used for text, borders, backgrounds
-   */
-  --neutral-50: 210 40% 98%;
-  --neutral-100: 214 32% 96%;
-  --neutral-200: 213 27% 92%;
-  --neutral-300: 212 26% 85%;
-  --neutral-400: 215 20% 65%;
-  --neutral-500: 215 16% 47%;
-  --neutral-600: 215 19% 35%;
-  --neutral-700: 215 25% 27%;
-  --neutral-800: 217 33% 17%;
-  --neutral-900: 222 47% 11%;
+  /* Neutral Colors (Warm stone) */
+  --neutral-50: 36 20% 97%;
+  --neutral-100: 36 16% 94%;
+  --neutral-200: 34 14% 88%;
+  --neutral-300: 32 12% 79%;
+  --neutral-400: 29 9% 62%;
+  --neutral-500: 28 8% 47%;
+  --neutral-600: 27 10% 37%;
+  --neutral-700: 26 12% 29%;
+  --neutral-800: 24 15% 19%;
+  --neutral-900: 24 18% 13%;
 
   /* ========================================
      SPACING TOKENS
@@ -104,8 +100,9 @@
      ======================================== */
 
   /* Font Families */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --font-sans: "IBM Plex Sans", "Avenir Next", "SF Pro Text", "Noto Sans SC", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, "Noto Serif SC", serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
   /* Font Sizes */
   --text-xs: 0.75rem;      /* 12px */
@@ -144,21 +141,21 @@
      BORDER RADIUS
      ======================================== */
   --radius-none: 0;
-  --radius-sm: 0.25rem;    /* 4px */
-  --radius-md: 0.5rem;     /* 8px - matches --radius from globals.css */
-  --radius-lg: 0.75rem;    /* 12px */
-  --radius-xl: 1rem;       /* 16px */
-  --radius-2xl: 1.5rem;    /* 24px */
+  --radius-sm: 0.5rem;     /* 8px */
+  --radius-md: 0.75rem;    /* 12px */
+  --radius-lg: 1rem;       /* 16px */
+  --radius-xl: 1.25rem;    /* 20px */
+  --radius-2xl: 1.75rem;   /* 28px */
   --radius-full: 9999px;   /* Fully rounded */
 
   /* ========================================
      SHADOWS
      ======================================== */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 2px 0 rgb(42 35 24 / 0.05);
+  --shadow-md: 0 5px 14px -6px rgb(42 35 24 / 0.18), 0 2px 6px -4px rgb(42 35 24 / 0.12);
+  --shadow-lg: 0 14px 30px -14px rgb(42 35 24 / 0.22), 0 8px 16px -10px rgb(42 35 24 / 0.14);
+  --shadow-xl: 0 24px 40px -18px rgb(42 35 24 / 0.24), 0 10px 20px -12px rgb(42 35 24 / 0.16);
+  --shadow-inner: inset 0 2px 4px 0 rgb(42 35 24 / 0.08);
   --shadow-none: 0 0 #0000;
 
   /* ========================================

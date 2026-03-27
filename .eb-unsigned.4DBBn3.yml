@@ -1,0 +1,10 @@
+extends: "/Users/wugaoyi/Learning/Project/ClawX/electron-builder.yml"
+mac:
+  notarize: false
+  identity: null
+  hardenedRuntime: false
+publish:
+  - provider: github
+    owner: Alfred768
+    repo: xclaw
+    releaseType: release

@@ -1,3 +1,11 @@
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/noto-sans-sc/400.css';
+@import '@fontsource/noto-sans-sc/500.css';
+@import '@fontsource/noto-sans-sc/600.css';
+
 /* Import Design Tokens */
 @import './tokens.css';
 
@@ -22,29 +30,29 @@
      ======================================== */
   :root {
     /* Base Colors */
-    --background: var(--neutral-50);
+    --background: var(--neutral-100);
     --foreground: var(--neutral-900);
 
     /* Surface Colors */
-    --card: 0 0% 100%;
+    --card: 34 26% 98%;
     --card-foreground: var(--neutral-900);
-    --popover: 0 0% 100%;
+    --popover: 34 26% 98%;
     --popover-foreground: var(--neutral-900);
 
     /* Brand Colors */
     --primary: var(--primary-500);
-    --primary-foreground: 210 40% 98%;
+    --primary-foreground: 36 20% 97%;
 
     /* Secondary Colors */
-    --secondary: var(--neutral-100);
+    --secondary: var(--neutral-200);
     --secondary-foreground: var(--neutral-900);
 
     /* Muted Colors */
-    --muted: var(--neutral-100);
+    --muted: 34 20% 92%;
     --muted-foreground: var(--neutral-500);
 
     /* Accent Colors */
-    --accent: var(--neutral-100);
+    --accent: 34 22% 91%;
     --accent-foreground: var(--neutral-900);
 
     /* Semantic Colors */
@@ -56,12 +64,12 @@
     --warning-foreground: var(--neutral-900);
 
     /* Border & Input */
-    --border: var(--neutral-200);
-    --input: var(--neutral-200);
+    --border: var(--neutral-300);
+    --input: var(--neutral-300);
     --ring: var(--primary-500);
 
     /* Radius */
-    --radius: var(--radius-md);
+    --radius: var(--radius-lg);
   }
 
   /* ========================================
@@ -116,14 +124,40 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
     font-feature-settings: "rlig" 1, "calt" 1;
     /* Use design token for line height */
     line-height: var(--leading-base);
+    background-image:
+      radial-gradient(circle at 6% -8%, hsl(var(--primary) / 0.12), transparent 34%),
+      radial-gradient(circle at 88% 8%, hsl(var(--accent-foreground) / 0.04), transparent 30%);
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    letter-spacing: var(--tracking-tight);
+    font-weight: 500;
   }
 
   /* Better focus styles */
   :focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+    --duration-slow: 0ms;
+    --duration-slower: 0ms;
+  }
+
+  * {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -179,6 +213,27 @@
 /* Focus ring utility */
 .focus-ring {
   @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+/* ========================================
+   VISUAL POLISH HELPERS
+   ======================================== */
+.card-surface {
+  border-color: hsl(var(--border) / 0.68);
+  border-radius: var(--radius-2xl);
+}
+
+.badge-pill {
+  border-radius: var(--radius-full);
+}
+
+.tabs-list-soft {
+  border-radius: var(--radius-xl);
+  background-color: hsl(var(--muted) / 0.8);
+}
+
+.tabs-trigger-soft {
+  border-radius: var(--radius-lg);
 }
 
 /* ========================================

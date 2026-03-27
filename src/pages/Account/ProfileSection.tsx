@@ -106,7 +106,7 @@ export function ProfileSection() {
               <User className="h-10 w-10 text-muted-foreground" weight="thin" />
             )}
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{t('profile.avatar')}</p>
             <p className="text-xs text-muted-foreground mb-2">{t('profile.changeAvatar')}</p>
             <input
@@ -131,14 +131,15 @@ export function ProfileSection() {
         {/* Display Name */}
         <div className="space-y-2">
           <Label htmlFor="displayName">{t('profile.displayName')}</Label>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-start gap-2 sm:flex-nowrap">
             <Input
               id="displayName"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder={t('profile.displayNamePlaceholder')}
+              className="min-w-[220px] flex-1"
             />
-            <Button onClick={handleSave} disabled={isSaving || isLoading}>
+            <Button onClick={handleSave} disabled={isSaving || isLoading} className="shrink-0 whitespace-nowrap">
               {isSaving ? (
                 <>{t('profile.saving')}</>
               ) : (
@@ -154,11 +155,11 @@ export function ProfileSection() {
         {/* User ID */}
         <div className="space-y-2">
           <Label>{t('profile.userId')}</Label>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-md bg-muted px-3 py-2 text-sm font-mono">
+          <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+            <code className="min-w-[220px] flex-1 rounded-md bg-muted px-3 py-2 text-sm font-mono break-all">
               {profile?.public_id || user?.publicId || t('profile.userIdPending', { defaultValue: 'Available after refresh' })}
             </code>
-            <Button variant="outline" size="icon" onClick={copyUserId}>
+            <Button variant="outline" size="icon" onClick={copyUserId} className="shrink-0">
               {copied ? (
                 <Check className="h-4 w-4 text-green-500" weight="bold" />
               ) : (

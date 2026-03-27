@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useEffect, useRef } from 'react';
+import { AccountStatePanel, type AccountState } from './components/AccountStatePanel';
 
 export function SecuritySection() {
   const { t } = useTranslation('account');
@@ -89,8 +90,34 @@ export function SecuritySection() {
     }
   };
 
+  const bindingState: AccountState = authStatus === 'pending' || authStatus === 'scanning'
+    ? 'loading'
+    : authStatus === 'error' || authStatus === 'expired'
+      ? 'error'
+      : profile?.alipay_user_id
+        ? 'success'
+        : 'empty';
+
   return (
     <div className="space-y-6">
+      <AccountStatePanel
+        state={bindingState}
+        title={
+          bindingState === 'loading'
+            ? t('security.stateLoading', { defaultValue: 'Waiting for account binding result...' })
+            : bindingState === 'error'
+              ? t('security.stateError', { defaultValue: 'Binding failed or expired' })
+              : bindingState === 'success'
+                ? t('security.stateSuccess', { defaultValue: 'Your account is bound and ready' })
+                : t('security.stateEmpty', { defaultValue: 'Bind an account to unlock linked features' })
+        }
+        description={
+          bindingState === 'error'
+            ? t('security.stateErrorDesc', { defaultValue: 'You can retry binding below.' })
+            : t('security.description')
+        }
+      />
+
       {/* Account Bindings */}
       <Card>
         <CardHeader>
@@ -102,21 +129,21 @@ export function SecuritySection() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Alipay Binding */}
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-4">
+            <div className="flex min-w-0 items-center gap-3">
               <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                 <span className="text-blue-600 dark:text-blue-300 font-bold text-sm">A</span>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium">{t('security.alipay')}</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="break-words text-sm text-muted-foreground">
                   {profile?.alipay_user_id
                     ? t('security.alipayBound')
                     : t('security.alipayNotBound')}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               {profile?.alipay_user_id ? (
                 <Badge variant="default" className="bg-green-500">
                   <Check className="h-3 w-3 mr-1" weight="bold" />
@@ -147,14 +174,14 @@ export function SecuritySection() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
               <p className="font-medium">{t('security.logout')}</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="break-words text-sm text-muted-foreground">
                 {t('security.logoutDesc', { defaultValue: 'Sign out of your account on this device' })}
               </p>
             </div>
-            <Button variant="destructive" onClick={handleLogout}>
+            <Button variant="destructive" onClick={handleLogout} className="shrink-0">
               <SignOut className="h-4 w-4 mr-2" weight="regular" />
               {t('security.logout')}
             </Button>

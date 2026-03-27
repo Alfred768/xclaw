@@ -476,7 +476,7 @@ export function UsageSection() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="account-usage-detail">
       {/* Current Plan */}
       <Card>
         <CardHeader>
@@ -488,13 +488,13 @@ export function UsageSection() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Plan Badge */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               {getTierIcon(profile?.subscription_tier)}
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">{t('usage.currentPlan')}</p>
-                <div className="flex items-center gap-2">
-                  <Badge variant={getTierBadgeVariant()} className="text-base px-3 py-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={getTierBadgeVariant()} className="max-w-full truncate px-3 py-1 text-base">
                     {getTierDisplayName()}
                   </Badge>
                   {profile?.is_trial && (
@@ -506,7 +506,7 @@ export function UsageSection() {
               </div>
             </div>
             {(profile?.subscription_tier === 'free' || !profile?.subscription_tier) && !profile?.is_trial && (
-              <Button className="gap-2" onClick={() => handleUpgradeClick('monthly')}>
+              <Button className="shrink-0 gap-2" onClick={() => handleUpgradeClick('monthly')}>
                 <ArrowUpRight className="h-4 w-4" />
                 {t('usage.upgrade')}
               </Button>
@@ -661,13 +661,14 @@ export function UsageSection() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* API Key Display */}
-            <div className="flex items-center gap-2">
-              <code className="flex-1 px-3 py-2 bg-muted rounded-md text-sm font-mono truncate">
+            <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+              <code className="min-w-[220px] flex-1 truncate rounded-md bg-muted px-3 py-2 text-sm font-mono">
                 {yunwuToken.apiKey}
               </code>
               <Button
                 variant="outline"
                 size="icon"
+                className="shrink-0"
                 onClick={() => yunwuToken.apiKey && copyToClipboard(yunwuToken.apiKey)}
               >
                 <Copy className="h-4 w-4" />

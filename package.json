@@ -1,6 +1,6 @@
 {
     "name": "xclaw",
-    "version": "0.1.15",
+    "version": "0.1.16",
     "pnpm": {
         "onlyBuiltDependencies": [
             "@whiskeysockets/baileys",
@@ -47,6 +47,9 @@
         "postversion": "git push && git push --tags"
     },
     "dependencies": {
+        "@fontsource/ibm-plex-mono": "^5.2.7",
+        "@fontsource/ibm-plex-sans": "^5.2.8",
+        "@fontsource/noto-sans-sc": "^5.2.9",
         "@phosphor-icons/react": "^2.1.10",
         "@radix-ui/react-accordion": "^1.2.12",
         "@radix-ui/react-dialog": "^1.1.4",

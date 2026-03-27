@@ -30,6 +30,8 @@ import { ProvidersSettings } from '@/components/settings/ProvidersSettings';
 import { UpdateSettings } from '@/components/settings/UpdateSettings';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES } from '@/i18n';
+import { SettingsSectionsNav } from './components/SettingsSectionsNav';
+import { SettingsStatePanel, type SettingsState } from './components/SettingsStatePanel';
 type ControlUiInfo = {
   url: string;
   token: string;
@@ -214,6 +216,24 @@ export function Settings() {
     }
   };
 
+  const settingsSections = [
+    { id: 'settings-appearance', label: t('appearance.title') },
+    { id: 'settings-ai-providers', label: t('aiProviders.title') },
+    { id: 'settings-gateway', label: t('gateway.title') },
+    { id: 'settings-updates', label: t('updates.title') },
+    { id: 'settings-advanced', label: t('advanced.title') },
+    ...(devModeUnlocked ? [{ id: 'settings-developer', label: t('developer.title') }] : []),
+    { id: 'settings-about', label: t('about.title') },
+  ];
+
+  const gatewayPanelState: SettingsState = gatewayStatus.state === 'starting'
+    ? 'loading'
+    : gatewayStatus.state === 'error'
+      ? 'error'
+      : gatewayStatus.state === 'running'
+        ? 'success'
+        : 'empty';
+
   return (
     <div className="space-y-6 p-6">
       <div>
@@ -223,8 +243,11 @@ export function Settings() {
         </p>
       </div>
 
+      <SettingsSectionsNav sections={settingsSections} />
+
       {/* Appearance */}
-      <Card>
+      <section id="settings-appearance" className="scroll-mt-24">
+        <Card>
         <CardHeader>
           <CardTitle>{t('appearance.title')}</CardTitle>
           <CardDescription>{t('appearance.description')}</CardDescription>
@@ -232,7 +255,7 @@ export function Settings() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>{t('appearance.theme')}</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant={theme === 'light' ? 'default' : 'outline'}
                 size="sm"
@@ -261,7 +284,7 @@ export function Settings() {
           </div>
           <div className="space-y-2">
             <Label>{t('appearance.language')}</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {SUPPORTED_LANGUAGES.map((lang) => (
                 <Button
                   key={lang.code}
@@ -275,10 +298,12 @@ export function Settings() {
             </div>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </section>
 
       {/* AI Providers */}
-      <Card>
+      <section id="settings-ai-providers" className="scroll-mt-24">
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Key className="h-5 w-5" weight="regular" />
@@ -289,23 +314,49 @@ export function Settings() {
         <CardContent>
           <ProvidersSettings />
         </CardContent>
-      </Card>
+        </Card>
+      </section>
 
       {/* Gateway */}
-      <Card>
+      <section id="settings-gateway" className="scroll-mt-24">
+        <Card>
         <CardHeader>
           <CardTitle>{t('gateway.title')}</CardTitle>
           <CardDescription>{t('gateway.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
+          <SettingsStatePanel
+            state={gatewayPanelState}
+            title={
+              gatewayPanelState === 'loading'
+                ? t('gateway.starting', { defaultValue: 'Gateway is starting...' })
+                : gatewayPanelState === 'error'
+                  ? t('gateway.error', { defaultValue: 'Gateway encountered an error' })
+                  : gatewayPanelState === 'success'
+                    ? t('gateway.running', { defaultValue: 'Gateway is running normally' })
+                    : t('gateway.stopped', { defaultValue: 'Gateway is currently stopped' })
+            }
+            description={
+              gatewayPanelState === 'error'
+                ? gatewayStatus.error || t('gateway.errorHint', { defaultValue: 'Try restarting the gateway process.' })
+                : t('gateway.port', { defaultValue: 'Port' }) + `: ${gatewayStatus.port}`
+            }
+            action={(
+              <Button variant="outline" size="sm" onClick={restartGateway}>
+                <ArrowClockwise className="mr-2 h-4 w-4" weight="bold" />
+                {t('common:actions.restart')}
+              </Button>
+            )}
+          />
+
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
               <Label>{t('gateway.status')}</Label>
               <p className="text-sm text-muted-foreground">
                 {t('gateway.port')}: {gatewayStatus.port}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
               <Badge
                 variant={
                   gatewayStatus.state === 'running'
@@ -317,10 +368,6 @@ export function Settings() {
               >
                 {gatewayStatus.state}
               </Badge>
-              <Button variant="outline" size="sm" onClick={restartGateway}>
-                <ArrowClockwise className="h-4 w-4 mr-2" weight="bold" />
-                {t('common:actions.restart')}
-              </Button>
               <Button variant="outline" size="sm" onClick={handleShowLogs}>
                 <FileText className="h-4 w-4 mr-2" weight="regular" />
                 {t('gateway.logs')}
@@ -363,10 +410,12 @@ export function Settings() {
             />
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </section>
 
       {/* Updates */}
-      <Card>
+      <section id="settings-updates" className="scroll-mt-24">
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" weight="regular" />
@@ -379,8 +428,8 @@ export function Settings() {
 
           <Separator />
 
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
               <Label>{t('updates.autoCheck')}</Label>
               <p className="text-sm text-muted-foreground">
                 {t('updates.autoCheckDesc')}
@@ -392,8 +441,8 @@ export function Settings() {
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
               <Label>{t('updates.autoDownload')}</Label>
               <p className="text-sm text-muted-foreground">
                 {t('updates.autoDownloadDesc')}
@@ -408,17 +457,19 @@ export function Settings() {
             />
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </section>
 
       {/* Advanced */}
-      <Card>
+      <section id="settings-advanced" className="scroll-mt-24">
+        <Card>
         <CardHeader>
           <CardTitle>{t('advanced.title')}</CardTitle>
           <CardDescription>{t('advanced.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
               <Label>{t('advanced.devMode')}</Label>
               <p className="text-sm text-muted-foreground">
                 {t('advanced.devModeDesc')}
@@ -430,11 +481,13 @@ export function Settings() {
             />
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </section>
 
       {/* Developer */}
       {devModeUnlocked && (
-        <Card>
+        <section id="settings-developer" className="scroll-mt-24">
+          <Card>
           <CardHeader>
             <CardTitle>{t('developer.title')}</CardTitle>
             <CardDescription>{t('developer.description')}</CardDescription>
@@ -458,18 +511,19 @@ export function Settings() {
                 <p className="text-sm text-muted-foreground">
                   {t('developer.gatewayTokenDesc')}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Input
                     readOnly
                     value={controlUiInfo?.token || ''}
                     placeholder={t('developer.tokenUnavailable')}
-                    className="font-mono"
+                    className="min-w-[220px] flex-1 font-mono"
                   />
                   <Button
                     type="button"
                     variant="outline"
                     onClick={refreshControlUiInfo}
                     disabled={!devModeUnlocked}
+                    className="shrink-0"
                   >
                     <ArrowClockwise className="h-4 w-4 mr-2" weight="bold" />
                     {t('common:actions.load')}
@@ -479,6 +533,7 @@ export function Settings() {
                     variant="outline"
                     onClick={handleCopyGatewayToken}
                     disabled={!controlUiInfo?.token}
+                    className="shrink-0"
                   >
                     <Copy className="h-4 w-4 mr-2" weight="regular" />
                     {t('common:actions.copy')}
@@ -499,18 +554,19 @@ export function Settings() {
                       {t('developer.cliPowershell')}
                     </p>
                   )}
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Input
                       readOnly
                       value={openclawCliCommand}
                       placeholder={openclawCliError || t('developer.cmdUnavailable')}
-                      className="font-mono"
+                      className="min-w-[220px] flex-1 font-mono"
                     />
                     <Button
                       type="button"
                       variant="outline"
                       onClick={handleCopyCliCommand}
                       disabled={!openclawCliCommand}
+                      className="shrink-0"
                     >
                       <Copy className="h-4 w-4 mr-2" weight="regular" />
                       {t('common:actions.copy')}
@@ -536,11 +592,13 @@ export function Settings() {
               </>
             )}
           </CardContent>
-        </Card>
+          </Card>
+        </section>
       )}
 
       {/* About */}
-      <Card>
+      <section id="settings-about" className="scroll-mt-24">
+        <Card>
         <CardHeader>
           <CardTitle>{t('about.title')}</CardTitle>
         </CardHeader>
@@ -567,7 +625,8 @@ export function Settings() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </section>
     </div>
   );
 }

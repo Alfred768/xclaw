@@ -63,6 +63,7 @@ export const ChatMessage = memo(function ChatMessage({
         'flex gap-3 group',
         isUser ? 'flex-row-reverse' : 'flex-row',
       )}
+      data-testid={isUser ? 'chat-message-user' : 'chat-message-assistant'}
     >
       {/* Avatar */}
       <div
