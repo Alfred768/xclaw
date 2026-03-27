@@ -51,6 +51,7 @@ coverage/
 *.AppImage
 *.deb
 *.rpm
+/.eb-unsigned.*.yml
 
 resources/bin
 
